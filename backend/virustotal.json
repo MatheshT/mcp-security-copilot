@@ -1,0 +1,23 @@
+[
+  {
+    "ip": "185.220.101.45",
+    "reputation": "Malicious",
+    "detections": 18,
+    "country": "Russia",
+    "confidence": "95%"
+  },
+  {
+    "ip": "45.155.205.233",
+    "reputation": "Malicious",
+    "detections": 25,
+    "country": "China",
+    "confidence": "98%"
+  },
+  {
+    "ip": "8.8.8.8",
+    "reputation": "Clean",
+    "detections": 0,
+    "country": "USA",
+    "confidence": "100%"
+  }
+]
