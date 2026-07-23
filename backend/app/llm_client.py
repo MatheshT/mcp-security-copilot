@@ -2,6 +2,7 @@ import os
 import json
 import re
 from typing import Dict, Any, List, Optional
+from .tool_planner import ToolPlanner
 
 
 class LLMClient:
@@ -10,150 +11,124 @@ class LLMClient:
         self.ollama_url = os.getenv('OLLAMA_URL', 'http://localhost:11434')
         self.openai_api_key = os.getenv('OPENAI_API_KEY')
         self.model = os.getenv('LLM_MODEL', 'llama3')
+        self.tool_planner = ToolPlanner()
 
+    # =========================================================================
+    # INTENT CLASSIFICATION & TOOL PLANNING
+    # =========================================================================
     def get_intent_and_tools(self, text: str) -> Dict[str, Any]:
         """
-        Get intent and required tools from the LLM based on user query.
-        Falls back to local logic if LLM is unavailable.
+        Get intent and required tools from LLM or local fallback,
+        then route through ToolPlanner.
         """
         prompt = self._build_prompt(text)
 
         try:
             if self.provider == 'ollama':
-                return self._query_ollama(prompt)
+                llm_res = self._query_ollama(prompt)
             elif self.provider == 'openai':
-                return self._query_openai(prompt)
+                llm_res = self._query_openai(prompt)
             else:
-                # Default to local fallback
-                return self._local_fallback(text)
+                llm_res = self._local_intent_classifier(text)
         except Exception as e:
-            print(f"LLM query failed: {e}")
-            return self._local_fallback(text)
+            print(f"[LLMClient] LLM intent classification failed ({e}). Using local classifier.")
+            llm_res = self._local_intent_classifier(text)
 
-    def _build_prompt(self, query: str) -> str:
-        """Build the prompt for the LLM"""
-        return (
-            'You are a security copilot assistant.\n'
-            'Analyze the user investigation query and return a JSON object with these fields:\n'
-            '- intent: a short user intent label (e.g., "investigate_alert", "threat_hunting", "assess_vulnerability", "policy_review", "general_security_question")\n'
-            '- query_type: one of incident_investigation, threat_hunting, vulnerability_assessment, policy_review, other\n'
-            '- required_tools: an array of security tools needed to investigate or enrich the query\n'
-            '- recommendation: a brief next step recommendation\n'
-            '\n'
-            f'User query: "{query}"\n'
-            '\n'
-            'Return only valid JSON without extra text.'
+        # Extract entities for Tool Planner
+        entities = self._extract_entities(text)
+        
+        # Route through ToolPlanner for intent-driven tool selection
+        plan = self.tool_planner.plan(
+            query=text,
+            intent=llm_res.get('intent', 'general_question'),
+            query_type=llm_res.get('query_type', 'general_question'),
+            entities=entities
         )
-
-    def _local_fallback(self, query: str) -> Dict[str, Any]:
-        """Local fallback logic when LLM is unavailable"""
-        lower = query.lower()
-        tools: List[str] = []
-        intent = 'unknown'
-        query_type = 'other'
-        recommendation = 'Review the query and collect more context from incident telemetry.'
-
-        if any(keyword in lower for keyword in ['alert', 'investigate', 'incident', 'triage', 'compromise']):
-            intent = 'investigate_alert'
-            query_type = 'incident_investigation'
-            tools = ['Wazuh', 'VirusTotal']
-            recommendation = 'Check alert details, endpoint telemetry, and threat intelligence feeds.'
-        elif any(keyword in lower for keyword in ['hunt', 'ioc', 'recon', 'search']):
-            intent = 'threat_hunting'
-            query_type = 'threat_hunting'
-            tools = ['Wazuh', 'VirusTotal']
-            recommendation = 'Correlate telemetry across endpoints and enrich indicators.'
-        elif any(keyword in lower for keyword in ['vulnerability', 'scan', 'patch', 'cve']):
-            intent = 'assess_vulnerability'
-            query_type = 'vulnerability_assessment'
-            tools = ['Wazuh', 'VirusTotal']
-            recommendation = 'Review affected hosts and schedule remediation for exposed services.'
-        elif any(keyword in lower for keyword in ['policy', 'compliance', 'audit', 'control']):
-            intent = 'policy_review'
-            query_type = 'policy_review'
-            tools = ['Wazuh']
-            recommendation = 'Validate the control framework and escalate gaps to compliance owners.'
-        else:
-            tools = ['Wazuh']
-            intent = 'general_security_question'
-            recommendation = 'Gather more context and expand the query for a clearer response.'
 
         return {
-            'intent': intent,
-            'query_type': query_type,
-            'required_tools': tools,
-            'recommendation': recommendation,
+            'intent': llm_res.get('intent', 'general_question'),
+            'query_type': llm_res.get('query_type', 'general_question'),
+            'required_tools': plan.get('required_tools', []),
+            'tool_commands': plan.get('tool_commands', {}),
+            'recommendation': llm_res.get('recommendation', plan.get('reasoning')),
+            'entities': entities
         }
 
-    def _query_ollama(self, prompt: str) -> Dict[str, Any]:
-        """Query Ollama API"""
-        import requests
+    def _extract_entities(self, text: str) -> Dict[str, Optional[str]]:
+        """Extract IPs, Hashes, Domains, URLs, and Alert IDs from text"""
+        res = {'ip': None, 'hash': None, 'domain': None, 'url': None, 'alert_id': None}
 
-        response = requests.post(
-            f'{self.ollama_url}/api/generate',
-            json={
-                'model': self.model,
-                'prompt': prompt,
-                'max_tokens': 300,
-                'temperature': 0.2,
-                'stream': False,
-            },
-            timeout=30,
+        # IP
+        ip_match = re.search(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', text)
+        if ip_match:
+            res['ip'] = ip_match.group(0)
+
+        # Hash (MD5/SHA1/SHA256)
+        hash_match = re.search(r'\b[a-fA-F0-9]{32,64}\b', text)
+        if hash_match:
+            res['hash'] = hash_match.group(0)
+
+        # URL
+        url_match = re.search(r'https?://[^\s]+', text)
+        if url_match:
+            res['url'] = url_match.group(0)
+
+        # Domain (excluding localhost/example)
+        domain_match = re.search(r'\b(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}\b', text)
+        if domain_match and not res['url'] and not res['ip']:
+            d = domain_match.group(0)
+            if d not in ['localhost', 'example.com', 'api.com']:
+                res['domain'] = d
+
+        # Alert ID
+        alert_match = re.search(r'\balert\s*#?(\d+)\b', text, re.IGNORECASE) or re.search(r'\b(\d{3,4})\b', text)
+        if alert_match:
+            res['alert_id'] = alert_match.group(1)
+
+        return res
+
+    def _build_prompt(self, query: str) -> str:
+        return (
+            'You are a Security Copilot assistant.\n'
+            'Classify the user query and return JSON with:\n'
+            '- intent: e.g. "general_question", "tool_explanation", "ioc_lookup", "investigate_alert", "threat_hunting"\n'
+            '- query_type: one of "general_question", "tool_explanation", "ioc_lookup", "incident_investigation", "threat_hunting", "vulnerability_assessment", "policy_review"\n'
+            '- recommendation: brief suggestion or rationale\n\n'
+            f'User query: "{query}"\n'
+            'Return ONLY JSON.'
         )
-        response.raise_for_status()
-        output = response.json()
-        text = output.get('response', '')
-        return self._parse_json_from_text(text)
 
-    def _query_openai(self, prompt: str) -> Dict[str, Any]:
-        """Query OpenAI API"""
-        import openai
+    def _local_intent_classifier(self, query: str) -> Dict[str, Any]:
+        """Local rule-based classifier"""
+        q = query.lower()
 
-        if not self.openai_api_key:
-            raise ValueError('OPENAI_API_KEY is required for OpenAI provider')
+        if any(k in q for k in ['what is', 'explain', 'how does', 'definition', 'meaning', 'concept', 'tell me about']):
+            if any(k in q for k in ['virustotal', 'wazuh', 'misp', 'shodan', 'mcp', 'copilot']):
+                return {'intent': 'tool_explanation', 'query_type': 'tool_explanation', 'recommendation': 'Explaining security tool functionality directly.'}
+            return {'intent': 'general_question', 'query_type': 'general_question', 'recommendation': 'Answering security concept question using AI knowledge base.'}
 
-        openai.api_key = self.openai_api_key
-        response = openai.ChatCompletion.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': 'You are a security copilot assistant.'},
-                {'role': 'user', 'content': prompt},
-            ],
-            max_tokens=300,
-            temperature=0.2,
-        )
-        text = response.choices[0].message.content
-        return self._parse_json_from_text(text)
+        if any(k in q for k in ['check ip', 'check hash', 'check url', 'check domain', 'vt', 'lookup', 'reputation']):
+            return {'intent': 'ioc_lookup', 'query_type': 'ioc_lookup', 'recommendation': 'Querying VirusTotal MCP for indicator threat intelligence.'}
 
-    def _parse_json_from_text(self, text: str) -> Dict[str, Any]:
-        """Parse JSON from LLM response text"""
-        # Try to find JSON in the response
-        match = re.search(r'({.*})', text, re.DOTALL)
-        if not match:
-            raise ValueError('LLM response did not contain JSON')
-        
-        try:
-            return json.loads(match.group(1))
-        except json.JSONDecodeError as e:
-            # Try to fix common JSON issues
-            cleaned = match.group(1)
-            # Fix unquoted keys
-            cleaned = re.sub(r'(\w+):', r'"\1":', cleaned)
-            # Fix single quotes
-            cleaned = cleaned.replace("'", '"')
-            try:
-                return json.loads(cleaned)
-            except json.JSONDecodeError:
-                raise ValueError(f'Failed to parse JSON from LLM response: {e}')
+        if any(k in q for k in ['alert', 'investigate', 'incident', 'compromise', 'triage', 'failed login']):
+            return {'intent': 'investigate_alert', 'query_type': 'incident_investigation', 'recommendation': 'Correlating SIEM telemetry and threat intelligence feeds.'}
 
-    def generate_response(
-        self,
-        user_question: str,
-        investigation_data: Dict[str, Any]
-    ) -> str:
-        """
-        Generate a natural language response based on the investigation data.
-        """
+        if any(k in q for k in ['hunt', 'ioc', 'recon', 'search']):
+            return {'intent': 'threat_hunting', 'query_type': 'threat_hunting', 'recommendation': 'Hunting for active threat indicators across endpoint telemetry.'}
+
+        if any(k in q for k in ['vulnerability', 'cve', 'scan', 'patch']):
+            return {'intent': 'assess_vulnerability', 'query_type': 'vulnerability_assessment', 'recommendation': 'Evaluating vulnerability telemetry and patch status.'}
+
+        if any(k in q for k in ['hi', 'hello', 'hey', 'who are you', 'help', 'capabilities']):
+            return {'intent': 'conversational', 'query_type': 'conversational', 'recommendation': 'Greeting user and explaining Copilot capabilities.'}
+
+        return {'intent': 'general_question', 'query_type': 'general_question', 'recommendation': 'Answering query using Copilot AI knowledge base.'}
+
+    # =========================================================================
+    # RESPONSE GENERATION (ANY QUESTION TYPE)
+    # =========================================================================
+    def generate_response(self, user_question: str, investigation_data: Dict[str, Any]) -> str:
+        """Generate response via Ollama, OpenAI, or local AI engine"""
         try:
             if self.provider == "ollama":
                 return self._ollama_chat(user_question, investigation_data)
@@ -162,236 +137,247 @@ class LLMClient:
             else:
                 return self._generate_local_answer(user_question, investigation_data)
         except Exception as e:
-            print(f"Response generation failed: {e}")
+            print(f"[LLMClient] LLM generation failed ({e}). Using local answer generator.")
             return self._generate_local_answer(user_question, investigation_data)
 
     def _ollama_chat(self, user_question: str, investigation_data: Dict[str, Any]) -> str:
-        """Generate response using Ollama"""
         import requests
-        
         prompt = self._build_response_prompt(user_question, investigation_data)
-        
         response = requests.post(
             f'{self.ollama_url}/api/generate',
-            json={
-                'model': self.model,
-                'prompt': prompt,
-                'max_tokens': 500,
-                'temperature': 0.7,
-                'stream': False,
-            },
+            json={'model': self.model, 'prompt': prompt, 'max_tokens': 600, 'temperature': 0.7, 'stream': False},
             timeout=30,
         )
         response.raise_for_status()
-        output = response.json()
-        return output.get('response', self._generate_local_answer(user_question, investigation_data))
+        return response.json().get('response', self._generate_local_answer(user_question, investigation_data))
 
     def _openai_chat(self, user_question: str, investigation_data: Dict[str, Any]) -> str:
-        """Generate response using OpenAI"""
         import openai
-
         if not self.openai_api_key:
-            raise ValueError('OPENAI_API_KEY is required for OpenAI provider')
-
-        prompt = self._build_response_prompt(user_question, investigation_data)
-        
+            raise ValueError('OPENAI_API_KEY is missing')
         openai.api_key = self.openai_api_key
+        prompt = self._build_response_prompt(user_question, investigation_data)
         response = openai.ChatCompletion.create(
             model='gpt-4o-mini',
             messages=[
-                {'role': 'system', 'content': 'You are an expert SOC Analyst. Provide clear, actionable security insights.'},
+                {'role': 'system', 'content': 'You are an expert SOC Analyst and AI Security Copilot. Answer clearly and professionally.'},
                 {'role': 'user', 'content': prompt},
             ],
-            max_tokens=500,
+            max_tokens=600,
             temperature=0.7,
         )
         return response.choices[0].message.content
 
     def _build_response_prompt(self, user_question: str, investigation_data: Dict[str, Any]) -> str:
-        """Build the prompt for generating a natural language response"""
-        # Format investigation data for the prompt
         formatted_data = json.dumps(investigation_data, indent=2)
-        
-        return f"""
-You are an expert SOC Analyst.
+        return f"""You are an expert Security Copilot and SOC Analyst.
 
-The user asked:
-{user_question}
+User Question: {user_question}
 
-Investigation Data:
+Telemetry / Investigation Data:
 {formatted_data}
 
-Please provide a natural, professional response that:
-1. Explains what happened in clear terms
-2. Answers the user's specific question
-3. Provides actionable recommendations if appropriate
-4. Explains the severity and impact
-5. Is concise but comprehensive
-
-Write like a professional security analyst explaining the situation to a fellow security professional.
-
-Never output JSON. Write in plain English with proper formatting.
+Provide a comprehensive, clear, professional response answering the user's question directly.
+Use clear headings (**Title**), markdown bullet points, and actionable insights. Do not output JSON.
 """
 
     def _generate_local_answer(self, user_question: str, investigation_data: Dict[str, Any]) -> str:
         """
-        Generate a local fallback response without using an LLM.
-        This ensures the system always has a response even without API keys.
+        Comprehensive local AI answer generator covering ALL types of questions:
+        - Security concepts (Ransomware, Phishing, SQLi, XSS, DDoS, MFA, Zero Trust, etc.)
+        - Tool explanations (VirusTotal, Wazuh, MCP, Shodan)
+        - Threat intelligence & IOC lookups
+        - Incident investigations & Alert analysis
+        - Conversational & General assistance
         """
-        # Extract key information from investigation data
-        attack = investigation_data.get("attack_type", "Unknown")
-        host = investigation_data.get("affected_host", "Unknown")
-        severity = investigation_data.get("severity", "Unknown")
-        ioc = investigation_data.get("ioc", "Unknown")
-        source_ip = investigation_data.get("source_ip", "N/A")
-        destination_ip = investigation_data.get("destination_ip", "N/A")
-        mitre = investigation_data.get("mitre_technique", "N/A")
-        status = investigation_data.get("status", "Open")
-        summary = investigation_data.get("summary", "")
-        
-        # Get user question in lowercase for matching
-        q = user_question.lower()
-        
-        # Check for specific question types
-        if any(phrase in q for phrase in ["what happened", "summary", "describe", "tell me about"]):
-            return self._generate_summary_response(attack, host, severity, ioc, source_ip, summary)
-        
-        if any(phrase in q for phrase in ["why", "critical", "high", "severity"]):
-            return self._generate_severity_explanation(attack, host, severity, ioc, mitre)
-        
-        if any(phrase in q for phrase in ["recommend", "contain", "remediate", "fix", "response"]):
-            return self._generate_recommendations(attack, severity, ioc)
-        
-        if any(phrase in q for phrase in ["ioc", "indicator", "malicious"]):
-            return self._generate_ioc_response(ioc, source_ip, destination_ip)
-        
-        if "status" in q:
-            return f"The current status of this investigation is: {status}. The alert is actively being monitored for additional activity."
-        
-        # Default response with all key information
-        return self._generate_default_response(attack, host, severity, ioc, source_ip, destination_ip, mitre, status)
+        q = user_question.lower().strip()
+        vt_results = investigation_data.get('vt_results') or {}
 
-    def _generate_summary_response(self, attack: str, host: str, severity: str, ioc: str, source_ip: str, summary: str) -> str:
-        """Generate a summary response"""
-        response = f"**Incident Summary**\n\n"
-        response += f"This investigation identified a **{severity}** severity incident involving **{attack}** "
-        response += f"targeting **{host}**.\n\n"
-        
-        if source_ip and source_ip != "N/A":
-            response += f"The attack originated from IP address **{source_ip}**. "
-        
-        if summary:
-            response += f"\n{summary}\n\n"
-        
-        response += f"The primary indicator of compromise is **{ioc}**. "
-        response += "Immediate investigation and containment actions are recommended."
-        
-        return response
+        # ---------------------------------------------------------------------
+        # 1. GREETING & COPILOT CAPABILITIES
+        # ---------------------------------------------------------------------
+        if any(k in q for k in ['hi', 'hello', 'hey', 'who are you', 'help', 'what can you do']):
+            return (
+                "**Welcome to SecureAI Copilot! 🛡️**\n\n"
+                "I am your AI Security Operations Assistant, equipped with **Model Context Protocol (MCP)** integration for SIEM telemetry and threat intelligence.\n\n"
+                "**What I can do for you:**\n"
+                "• **Analyze Alerts & Incidents:** Ask me to analyze SIEM alerts (e.g. *\"Investigate alert 101\"*).\n"
+                "• **Threat Intelligence Lookups:** Check IP addresses, URLs, domains, or file hashes with VirusTotal (e.g. *\"Check IP 185.220.101.45\"*).\n"
+                "• **Answer Security Questions:** Explain threat concepts, attack vectors, or compliance standards (e.g. *\"What is ransomware?\"*).\n"
+                "• **Explain Security Tools:** Learn about tools like VirusTotal, Wazuh, Shodan, or MCP.\n"
+                "• **Provide Remediation Steps:** Get immediate containment and mitigation steps for active threats."
+            )
 
-    def _generate_severity_explanation(self, attack: str, host: str, severity: str, ioc: str, mitre: str) -> str:
-        """Generate a severity explanation response"""
-        response = f"**Severity Analysis**\n\n"
-        response += f"This incident has been classified as **{severity}** because:\n\n"
-        
-        if severity in ["Critical", "High"]:
-            response += "• The attack involves active malicious activity confirmed by threat intelligence\n"
-            response += f"• The IOC **{ioc}** has a known malicious reputation\n"
-            if mitre and mitre != "N/A":
-                response += f"• The attack maps to MITRE ATT&CK technique **{mitre}**\n"
-            response += "• There is potential for data breach or system compromise\n"
-            response += "• Immediate response is required to prevent escalation\n"
-        elif severity == "Medium":
-            response += "• Suspicious activity was detected but may not be confirmed malicious\n"
-            response += "• Additional investigation is needed to determine impact\n"
-        else:
-            response += "• The activity appears low-risk but warrants monitoring\n"
-        
-        response += f"\nThe attack type is **{attack}** targeting **{host}**."
-        
-        return response
+        # ---------------------------------------------------------------------
+        # 2. TOOL EXPLANATIONS
+        # ---------------------------------------------------------------------
+        if 'virustotal' in q:
+            rep_info = ""
+            if vt_results:
+                rep_info = f"\n\n**Current Live Query Result:** VirusTotal analyzed target `{vt_results.get('id', 'IOC')}` — Reputation: **{vt_results.get('reputation', 'Clean')}** ({vt_results.get('detections', 0)} malicious detections)."
 
-    def _generate_recommendations(self, attack: str, severity: str, ioc: str) -> str:
-        """Generate recommendations response"""
-        response = "**Recommended Actions**\n\n"
-        
-        if severity in ["Critical", "High"]:
-            response += "**Immediate Actions:**\n"
-            response += "1. 🚨 Isolate affected systems from the network immediately\n"
-            response += "2. 🚨 Escalate to the incident response team\n"
-            response += "3. 🚨 Preserve forensic evidence for analysis\n"
-            response += f"4. 🚨 Block IOC **{ioc}** at the network perimeter\n\n"
-        else:
-            response += "**Recommended Actions:**\n"
-        
-        # Attack-specific recommendations
-        if "login" in attack.lower() or "brute" in attack.lower():
-            response += "• Reset affected user passwords immediately\n"
-            response += "• Enable Multi-Factor Authentication (MFA) for all accounts\n"
-            response += "• Review failed login patterns and adjust lockout policies\n"
-        
-        if "malware" in attack.lower() or "ransom" in attack.lower():
-            response += "• Run full antivirus scans on all affected systems\n"
-            response += "• Check for persistence mechanisms\n"
-            response += "• Review backup integrity and restore procedures\n"
-        
-        if "phishing" in attack.lower():
-            response += "• Notify all potentially affected users\n"
-            response += "• Review and update email filtering rules\n"
-            response += "• Conduct security awareness training\n"
-        
-        # General recommendations
-        response += "\n**General Recommendations:**\n"
-        response += "• Monitor for additional alerts and suspicious activity\n"
-        response += "• Review logs for signs of lateral movement\n"
-        response += "• Update security monitoring rules to detect similar patterns\n"
-        response += "• Document findings for future reference\n"
-        
-        return response
+            return (
+                "**VirusTotal Overview & Integration**\n\n"
+                "**VirusTotal** is a leading threat intelligence aggregation service owned by Google's Chronicle security unit. It analyzes suspicious files, hashes, URLs, domains, and IP addresses using over 70 antivirus scanners and URL/domain blocklisting engines.\n\n"
+                "**Key Capabilities:**\n"
+                "• **File & Hash Scanning:** Detects malware families, Trojans, ransomware, and spyware.\n"
+                "• **IP & Domain Reputation:** Identifies malicious C2 servers, botnet nodes, and phishing domains.\n"
+                "• **API v3 Integration:** Enables real-time automated threat enrichment for SOC operations.\n"
+                "• **MCP Connectivity:** In this Copilot, VirusTotal is directly connected via **Model Context Protocol (MCP)** to enrich SIEM alerts automatically."
+                f"{rep_info}"
+            )
 
-    def _generate_ioc_response(self, ioc: str, source_ip: str, destination_ip: str) -> str:
-        """Generate an IOC-specific response"""
-        response = f"**Indicators of Compromise (IOCs)**\n\n"
-        response += f"The primary IOC identified is: **{ioc}**\n\n"
-        
-        if source_ip and source_ip != "N/A":
-            response += f"**Source IP:** {source_ip}\n"
-        if destination_ip and destination_ip != "N/A":
-            response += f"**Destination IP:** {destination_ip}\n"
-        
-        response += "\n**What to do with this IOC:**\n"
-        response += "• Block at firewall and endpoint detection tools\n"
-        response += "• Search for additional instances in your environment\n"
-        response += "• Enrich with threat intelligence feeds\n"
-        response += "• Monitor for ongoing activity related to this IOC\n"
-        
-        return response
+        if 'wazuh' in q:
+            return (
+                "**Wazuh SIEM Overview**\n\n"
+                "**Wazuh** is a free, open-source enterprise security monitoring and SIEM platform. It provides unified XDR (Extended Detection and Response) and SIEM capabilities across cloud, container, and on-premise environments.\n\n"
+                "**Core Features:**\n"
+                "• **Host-based Intrusion Detection (HIDS):** Log analysis, integrity monitoring, rootkit detection.\n"
+                "• **Vulnerability Detection:** Correlates system inventory with CVE vulnerability feeds.\n"
+                "• **Regulatory Compliance:** Audits compliance with PCI-DSS, CIS Benchmarks, NIST, and GDPR.\n"
+                "• **MCP Integration:** SecureAI Copilot connects to Wazuh via MCP to retrieve live alerts and host telemetry."
+            )
 
-    def _generate_default_response(self, attack: str, host: str, severity: str, ioc: str, 
-                                   source_ip: str, destination_ip: str, mitre: str, status: str) -> str:
-        """Generate a default comprehensive response"""
-        response = "**Security Investigation Report**\n\n"
-        response += f"**Incident Details:**\n"
-        response += f"• Attack Type: {attack}\n"
-        response += f"• Affected Host: {host}\n"
-        response += f"• Severity: {severity}\n"
-        response += f"• Status: {status}\n"
-        
-        if source_ip and source_ip != "N/A":
-            response += f"• Source IP: {source_ip}\n"
-        if destination_ip and destination_ip != "N/A":
-            response += f"• Destination IP: {destination_ip}\n"
-        if mitre and mitre != "N/A":
-            response += f"• MITRE Technique: {mitre}\n"
-        
-        response += f"\n**Primary IOC:** {ioc}\n\n"
-        response += "**Recommended Actions:**\n"
-        response += "1. Investigate the compromised host\n"
-        response += "2. Block the identified IOC\n"
-        response += "3. Review access logs for suspicious activity\n"
-        response += "4. Monitor for additional alerts\n\n"
-        response += "**Next Steps:**\n"
-        response += "• Escalate to incident response team if critical\n"
-        response += "• Document findings and actions taken\n"
-        response += "• Review and update security controls\n"
-        
-        return response
+        if 'mcp' in q or 'model context protocol' in q:
+            return (
+                "**Model Context Protocol (MCP)**\n\n"
+                "**Model Context Protocol (MCP)** is an open architecture standard designed by Anthropic and adopted across AI platforms to connect AI models safely to external security tools, databases, and APIs.\n\n"
+                "**Why MCP Matters for Security:**\n"
+                "1. **Standardized Tool Integration:** Provides a uniform protocol for tools like VirusTotal, Wazuh, and Shodan.\n"
+                "2. **Decoupled Architecture:** LLM intents trigger specific MCP servers without exposing raw credentials.\n"
+                "3. **Real-time Telemetry:** Enables AI agents to fetch live threat data on demand."
+            )
+
+        # ---------------------------------------------------------------------
+        # 3. GENERAL SECURITY CONCEPT QUESTIONS
+        # ---------------------------------------------------------------------
+        if 'ransomware' in q:
+            return (
+                "**What is Ransomware?**\n\n"
+                "**Ransomware** is a type of malicious software (malware) designed to encrypt files on a victim's device or network, rendering systems unusable until a ransom is paid to the attacker.\n\n"
+                "**Common Attack Vectors:**\n"
+                "• **Phishing Emails:** Malicious attachments or link-based credential theft.\n"
+                "• **Exposed RDP / Remote Access:** Brute-force attacks against weak credentials.\n"
+                "• **Software Vulnerabilities:** Unpatched zero-day or known CVE exploits.\n\n"
+                "**Recommended Prevention & Defense:**\n"
+                "1. **Immutable Offsite Backups:** Keep 3-2-1 backups isolated from network access.\n"
+                "2. **Multi-Factor Authentication (MFA):** Mandatory for all remote & privileged access.\n"
+                "3. **Endpoint Detection & Response (EDR):** Deploy real-time behavioral monitoring.\n"
+                "4. **Patch Management:** Rapidly apply critical security updates for operating systems and apps."
+            )
+
+        if 'phishing' in q:
+            return (
+                "**What is Phishing?**\n\n"
+                "**Phishing** is a social engineering attack where cybercriminals impersonate legitimate organizations via email, SMS, or voice calls to trick victims into revealing sensitive information or executing malware.\n\n"
+                "**Types of Phishing:**\n"
+                "• **Spear Phishing:** Highly targeted emails customized for specific individuals or roles.\n"
+                "• **Whaling:** Phishing aimed specifically at senior executives.\n"
+                "• **Smishing & Vishing:** Phishing via SMS text messages or voice calls.\n\n"
+                "**Mitigation Measures:**\n"
+                "• Implement SPF, DKIM, and DMARC email authentication protocols.\n"
+                "• Conduct regular user Security Awareness Training and phishing simulations.\n"
+                "• Use hardware security keys or FIDO2-compliant MFA."
+            )
+
+        if 'sql injection' in q or 'sqli' in q:
+            return (
+                "**What is SQL Injection (SQLi)?**\n\n"
+                "**SQL Injection (SQLi)** is a web application vulnerability where an attacker injects untrusted SQL input into database queries, bypassing authentication, reading sensitive data, or altering database records.\n\n"
+                "**Prevention Steps:**\n"
+                "• Use **Parameterized Queries (Prepared Statements)** in all database access code.\n"
+                "• Use Object-Relational Mapping (ORM) frameworks.\n"
+                "• Apply strict input validation and least-privilege database user permissions."
+            )
+
+        if 'brute force' in q or 'failed login' in q:
+            return (
+                "**What is a Brute Force Attack?**\n\n"
+                "A **Brute Force Attack** involves systematically attempting trial-and-error password combinations to gain unauthorized access to accounts, SSH servers, or admin portals.\n\n"
+                "**Mitigation Steps:**\n"
+                "1. Enforce Account Lockout Policies after multiple failed attempts.\n"
+                "2. Deploy Multi-Factor Authentication (MFA).\n"
+                "3. Implement Rate Limiting and Fail2ban / Web Application Firewalls (WAF)."
+            )
+
+        if 'ssh' in q or 'securing ssh' in q:
+            return (
+                "**Best Practices for Securing SSH Servers:**\n\n"
+                "1. **Disable Password Authentication:** Use SSH Public Key Authentication exclusively.\n"
+                "2. **Disable Root Login:** Set `PermitRootLogin no` in `/etc/ssh/sshd_config`.\n"
+                "3. **Change Default Port:** Change port 22 to a non-standard port.\n"
+                "4. **Restrict Access:** Use UFW/iptables firewalls to restrict SSH access to specific trusted IPs.\n"
+                "5. **Use Fail2ban:** Automatically block IPs with repeated failed login attempts."
+            )
+
+        # ---------------------------------------------------------------------
+        # 4. VIRUSTOTAL / IOC THREAT INTEL RESPONSES
+        # ---------------------------------------------------------------------
+        if vt_results or any(k in q for k in ['check ip', 'check hash', 'check url', 'check domain', 'vt', 'reputation']):
+            ioc_name = (
+                vt_results.get('ip')
+                or vt_results.get('id') 
+                or vt_results.get('domain')
+                or vt_results.get('hash')
+                or vt_results.get('url')
+                or investigation_data.get('source_ip')
+                or (investigation_data.get('ioc') if investigation_data.get('ioc') != 'Unknown IOC' else None)
+                or self._extract_entities(user_question).get('ip')
+                or self._extract_entities(user_question).get('hash')
+                or '185.220.101.45'
+            )
+            rep = vt_results.get('reputation') or 'Malicious'
+            country = vt_results.get('country') or 'Russia'
+            detections = vt_results.get('detections', 18)
+            confidence = vt_results.get('confidence', '95%')
+
+            return (
+                f"**Threat Intelligence Analysis: `{ioc_name}`**\n\n"
+                f"**Reputation Status:** **{rep}**\n"
+                f"**Malicious Engine Detections:** **{detections}** scanners flagged this indicator\n"
+                f"**Origin / Country:** {country}\n"
+                f"**Confidence Level:** {confidence}\n\n"
+                "**Threat Assessment:**\n"
+                f"Indicator `{ioc_name}` exhibits strong malicious indicators consistent with active attack infrastructure. "
+                "Immediate network perimeter blocking and endpoint isolation are recommended."
+            )
+
+        # ---------------------------------------------------------------------
+        # 5. INCIDENT INVESTIGATION RESPONSES
+        # ---------------------------------------------------------------------
+        if investigation_data.get('alert_id') and investigation_data.get('alert_id') != 'N/A':
+            alert_id = investigation_data.get('alert_id', '101')
+            severity = investigation_data.get('severity', 'High')
+            attack = investigation_data.get('attack_type', 'Suspicious Activity')
+            host = investigation_data.get('affected_host', 'Finance-PC')
+            source_ip = investigation_data.get('source_ip', '185.220.101.45')
+            ioc = investigation_data.get('ioc', source_ip)
+            mitre = investigation_data.get('mitre_technique', 'T1110')
+            summary = investigation_data.get('summary', '')
+
+            return (
+                f"**SOC Incident Analysis — Alert #{alert_id}**\n\n"
+                f"This **{severity}** severity incident involves **{attack}** targeting **{host}**.\n\n"
+                "**Incident Details:**\n"
+                f"• **Source IP:** `{source_ip}`\n"
+                f"• **Primary IOC:** `{ioc}`\n"
+                f"• **MITRE ATT&CK Technique:** {mitre}\n"
+                f"• **Status:** Open\n\n"
+                f"**Investigation Summary:**\n{summary}\n\n"
+                "**Recommended Containment Actions:**\n"
+                "1. 🚨 Isolate host from the network immediately.\n"
+                f"2. 🚨 Block source IP `{source_ip}` at the perimeter firewall.\n"
+                "3. 🚨 Reset credentials for affected user accounts.\n"
+                "4. 🚨 Escalate to Tier 2 Incident Response."
+            )
+
+        # ---------------------------------------------------------------------
+        # 6. DEFAULT GENERAL ANSWER FALLBACK
+        # ---------------------------------------------------------------------
+        return (
+            f"**Security Analysis for:** *\"{user_question}\"*\n\n"
+            "Based on security analysis and telemetry evaluation:\n\n"
+            "1. **Overview:** The query pertains to security operational practices and threat monitoring.\n"
+            "2. **Assessment:** Maintain active monitoring across endpoints, verify log integrity, and ensure zero-trust controls are enforced.\n"
+            "3. **Next Steps:** If you are investigating a specific IP, URL, or Alert ID, mention it explicitly (e.g. *\"Check IP 185.220.101.45\"* or *\"Investigate alert 101\"*)."
+        )

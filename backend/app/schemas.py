@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from enum import Enum
 
@@ -10,6 +10,7 @@ class SeverityLevel(str, Enum):
     HIGH = "High"
     MEDIUM = "Medium"
     LOW = "Low"
+    INFO = "Info"
 
 
 class InvestigationStatus(str, Enum):
@@ -19,6 +20,7 @@ class InvestigationStatus(str, Enum):
     RESOLVED = "Resolved"
     PENDING = "Pending"
     ESCALATED = "Escalated"
+    INFORMATIONAL = "Informational"
 
 
 class DashboardStats(BaseModel):
@@ -108,7 +110,8 @@ class InvestigationQuery(BaseModel):
 
 class ChatRequest(BaseModel):
     """Model for chat requests"""
-    message: str
+    message: Optional[str] = None
+    query: Optional[str] = None
     analyst: Optional[str] = None
 
 
@@ -124,77 +127,11 @@ class UnifiedInvestigation(BaseModel):
 class InvestigationResponse(BaseModel):
     """Model for investigation responses"""
     required_tools: List[str]
-    query_type: Literal[
-        'incident_investigation',
-        'threat_hunting',
-        'vulnerability_assessment',
-        'policy_review',
-        'other'
-    ]
+    query_type: str
     intent: str
     recommendation: Optional[str] = None
     tool_responses: Optional[List[Dict[str, Any]]] = None
-    unified_investigation: Optional[UnifiedInvestigation] = None
+    unified_investigation: Optional[Dict[str, Any]] = None
     report_json: Optional[Dict[str, Any]] = None
     report_html: Optional[str] = None
-    ai_answer: Optional[str] = None  # ✅ NEW: Natural language AI response
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "required_tools": ["Wazuh", "VirusTotal"],
-                "query_type": "incident_investigation",
-                "intent": "investigate_alert",
-                "recommendation": "Check alert details and threat intelligence",
-                "tool_responses": [
-                    {
-                        "tool_name": "Wazuh",
-                        "data": {"alerts": [{"id": "101", "severity": "Critical"}]}
-                    }
-                ],
-                "unified_investigation": {
-                    "severity": "Critical",
-                    "ioc": "185.220.101.45",
-                    "confidence": "95%",
-                    "summary": "2 alert(s) correlated with IOC 185.220.101.45",
-                    "details": {
-                        "tools": ["Wazuh", "VirusTotal"],
-                        "relationships": [
-                            {
-                                "ioc": "185.220.101.45",
-                                "related_alerts": ["101"],
-                                "description": "IOC 185.220.101.45 is related to 1 alert(s)."
-                            }
-                        ]
-                    }
-                },
-                "report_json": {
-                    "alert_id": "101",
-                    "timestamp": "2026-07-18 09:41:00 UTC",
-                    "severity": "Critical",
-                    "attack_type": "Multiple Failed Login Attempts",
-                    "affected_host": "Finance-PC",
-                    "source_ip": "185.220.101.45",
-                    "destination_ip": "192.168.1.10",
-                    "mitre_technique": "T1110",
-                    "status": "Open",
-                    "confidence": "95%",
-                    "indicators_of_compromise": ["185.220.101.45"],
-                    "threat_intelligence": [
-                        "Reputation: Malicious",
-                        "Country: Russia",
-                        "Detections: 18",
-                        "Confidence: 95%"
-                    ],
-                    "investigation_summary": "2 alert(s) correlated with IOC 185.220.101.45",
-                    "recommendations": [
-                        "Block Source IP",
-                        "Reset User Password",
-                        "Enable MFA",
-                        "Monitor Endpoint"
-                    ]
-                },
-                "report_html": "<html><body><h1>Investigation Report</h1>...</body></html>",
-                "ai_answer": "**Investigation Summary**\n\nThis investigation (Alert ID: 101) identified a **Critical** severity incident involving **Multiple Failed Login Attempts** targeting **Finance-PC**.\n\n**Technical Details:**\n**Source IP:** 185.220.101.45\n**Destination IP:** 192.168.1.10\n**MITRE Technique:** T1110\n**Status:** Open\n**Confidence:** 95%\n\n**Primary Indicator of Compromise:** `185.220.101.45`\n\n**Summary:** 2 alert(s) correlated with IOC 185.220.101.45.\n\n**Threat Intelligence Findings:**\n• Reputation: Malicious\n• Country: Russia\n• Detections: 18\n• Confidence: 95%\n\n**Recommended Actions:**\n• Block Source IP\n• Reset User Password\n• Enable MFA\n• Monitor Endpoint\n\n**Next Steps:**\n• 🚨 IMMEDIATE: Escalate to incident response team\n• 🚨 IMMEDIATE: Isolate affected systems from the network\n• Continue monitoring for additional alerts\n• Document all findings and actions taken"
-            }
-        }
+    ai_answer: Optional[str] = None

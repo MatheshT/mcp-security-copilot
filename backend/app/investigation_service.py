@@ -13,6 +13,24 @@ class InvestigationService:
         """
         self.orchestrator = orchestrator or SecurityCopilotOrchestrator()
 
+    def analyze_file_upload(self, filename: str, content_bytes: bytes) -> InvestigationResponse:
+        """Process an uploaded file/image through orchestrator file analysis"""
+        result = self.orchestrator.analyze_file_upload(filename, content_bytes)
+        llm_result = result.get('llm', {})
+        ai_answer = result.get('ai_answer') or self._generate_fallback_answer(result.get('report_json', {}), filename)
+        
+        return InvestigationResponse(
+            required_tools=llm_result.get("required_tools", []),
+            query_type=llm_result.get("query_type", "other"),
+            intent=llm_result.get("intent", "unknown"),
+            recommendation=llm_result.get("recommendation"),
+            tool_responses=result.get("tool_responses"),
+            unified_investigation=result.get("unified_investigation"),
+            report_json=result.get("report_json"),
+            report_html=result.get("report_html"),
+            ai_answer=ai_answer,
+        )
+
     def analyze_query(self, query: str) -> InvestigationResponse:
         """
         Process a user query through the orchestrator and return structured results.
@@ -37,9 +55,7 @@ class InvestigationService:
         result = self.orchestrator.analyze_query(query)
         
         # Debug output
-        print("\n========== RESULT ==========")
-        print(result)
-        print("============================\n")
+        print(f"[InvestigationService] Analysis complete for query: {query}")
         
         # Step 2: Extract LLM results
         llm_result = result.get('llm', {})
