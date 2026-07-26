@@ -8,6 +8,7 @@ from .llm_client import LLMClient
 from .mcp.registry import create_mcp_client
 from .mcp.tool_server import ToolResponse
 from .report_generator import generate_report_json, generate_report_html
+from .predictive_analytics import PredictiveSecurityEngine
 
 
 class SecurityCopilotOrchestrator:
@@ -15,6 +16,7 @@ class SecurityCopilotOrchestrator:
         self.llm_client = LLMClient()
         self.mcp_client = create_mcp_client()
         self.file_analyzer = FileAnalyzer()
+        self.predictive_engine = PredictiveSecurityEngine()
 
     def analyze_file_upload(self, filename: str, content_bytes: bytes) -> Dict[str, Any]:
         """
@@ -85,6 +87,11 @@ class SecurityCopilotOrchestrator:
                     "wazuh_report": None,
                     "misp_report": None,
                     "shodan_report": None
+                },
+                "visual_data": {
+                    "threat_score": 0,
+                    "timeline": [],
+                    "attack_graph": []
                 }
             }
 
@@ -164,6 +171,12 @@ class SecurityCopilotOrchestrator:
                 misp_response = self.mcp_client.call_tool("MISP", f"search {target}")
                 responses.append(misp_response)
 
+            elif tool_name_lower == "shodan":
+                print(">>> EXECUTING SHODAN MCP TOOL <<<")
+                target = extracted_data['source_ip'] or entities.get('ip') or '185.220.101.45'
+                shodan_response = self.mcp_client.call_tool("Shodan", f"search {target}")
+                responses.append(shodan_response)
+
         # Step 4: Build Modular Tool Reports & Unified SOC Report
         tool_dicts = [response.dict() for response in responses]
         unified = build_unified_investigation_result(tool_dicts)
@@ -183,6 +196,20 @@ class SecurityCopilotOrchestrator:
         report_json['wazuh_report'] = unified.get('wazuh_report')
         report_json['misp_report'] = unified.get('misp_report')
         report_json['shodan_report'] = unified.get('shodan_report')
+
+        # Step 6: Generate Predictive Analytics (NEW UNIQUE FEATURE)
+        wazuh_alerts = []
+        for response in responses:
+            if hasattr(response, 'tool_name') and response.tool_name == "Wazuh":
+                if response.data and "alerts" in response.data:
+                    wazuh_alerts.extend(response.data["alerts"])
+        
+        predictive_insights = self.predictive_engine.predict_threat_probability({
+            "alerts": wazuh_alerts,
+            "tool_reports": unified.get('tool_reports', {})
+        })
+
+        report_json['predictive_analytics'] = predictive_insights
 
         report_html = generate_report_html(report_json)
         ai_answer = self.llm_client.generate_response(query, report_json)

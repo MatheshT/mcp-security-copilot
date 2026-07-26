@@ -89,7 +89,21 @@ class ToolPlanner:
             else:
                 commands['VirusTotal'] = ["check_ip 185.220.101.45"]
 
-            reasoning = "Incident investigation intent detected. Querying Wazuh SIEM telemetry and enriching with VirusTotal threat intelligence."
+            # Add MISP for threat actor attribution
+            tools.append('MISP')
+            if entities.get('ip'):
+                commands['MISP'] = [f"search {entities['ip']}"]
+            else:
+                commands['MISP'] = ["search 185.220.101.45"]
+
+            # Add Shodan for infrastructure intelligence
+            tools.append('Shodan')
+            if entities.get('ip'):
+                commands['Shodan'] = [f"search {entities['ip']}"]
+            else:
+                commands['Shodan'] = ["search 185.220.101.45"]
+
+            reasoning = "Incident investigation intent detected. Querying Wazuh SIEM telemetry and enriching with VirusTotal, MISP threat intelligence, and Shodan OSINT."
 
             return {
                 "required_tools": tools,
