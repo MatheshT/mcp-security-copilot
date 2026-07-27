@@ -3,6 +3,7 @@ import json
 import re
 from typing import Dict, Any, List, Optional
 from .tool_planner import ToolPlanner
+from .llm_intent_parser import intent_parser
 
 
 class LLMClient:
@@ -18,24 +19,51 @@ class LLMClient:
     # =========================================================================
     def get_intent_and_tools(self, text: str) -> Dict[str, Any]:
         """
-        Get intent and required tools from LLM or local fallback,
+        Get intent and required tools using advanced intent parser,
         then route through ToolPlanner.
         """
-        prompt = self._build_prompt(text)
-
+        # Use the advanced intent parser for sophisticated analysis
         try:
-            if self.provider == 'ollama':
-                llm_res = self._query_ollama(prompt)
-            elif self.provider == 'openai':
-                llm_res = self._query_openai(prompt)
-            else:
-                llm_res = self._local_intent_classifier(text)
+            parser_result = intent_parser.parse_query(text)
+            
+            # Convert to format expected by rest of system
+            llm_res = {
+                'intent': parser_result.intent.value,
+                'query_type': parser_result.query_type.value,
+                'recommendation': parser_result.reasoning,
+                'confidence': parser_result.confidence.value,
+                'risk_level': parser_result.risk_level,
+                'urgency': parser_result.urgency
+            }
+            
+            # Extract entities in the expected format
+            entities = {}
+            for entity in parser_result.entities:
+                entity_type = entity.type.replace('_address', '').replace('_number', '')
+                if entity_type not in entities:
+                    entities[entity_type] = entity.value
+            
+            # Add suggested actions as additional info
+            llm_res['suggested_actions'] = parser_result.suggested_actions
+            
         except Exception as e:
-            print(f"[LLMClient] LLM intent classification failed ({e}). Using local classifier.")
-            llm_res = self._local_intent_classifier(text)
+            print(f"[LLMClient] Advanced intent parser failed ({e}). Using fallback classifier.")
+            # Fallback to LLM-based or rule-based classification
+            prompt = self._build_prompt(text)
 
-        # Extract entities for Tool Planner
-        entities = self._extract_entities(text)
+            try:
+                if self.provider == 'ollama':
+                    llm_res = self._query_ollama(prompt)
+                elif self.provider == 'openai':
+                    llm_res = self._query_openai(prompt)
+                else:
+                    llm_res = self._local_intent_classifier(text)
+            except Exception as e2:
+                print(f"[LLMClient] LLM intent classification failed ({e2}). Using local classifier.")
+                llm_res = self._local_intent_classifier(text)
+
+            # Extract entities for Tool Planner
+            entities = self._extract_entities(text)
         
         # Route through ToolPlanner for intent-driven tool selection
         plan = self.tool_planner.plan(
@@ -51,7 +79,10 @@ class LLMClient:
             'required_tools': plan.get('required_tools', []),
             'tool_commands': plan.get('tool_commands', {}),
             'recommendation': llm_res.get('recommendation', plan.get('reasoning')),
-            'entities': entities
+            'entities': entities,
+            'suggested_actions': llm_res.get('suggested_actions', []),
+            'risk_level': llm_res.get('risk_level', 'Low'),
+            'urgency': llm_res.get('urgency', 'Normal')
         }
 
     def _extract_entities(self, text: str) -> Dict[str, Optional[str]]:
@@ -99,29 +130,75 @@ class LLMClient:
         )
 
     def _local_intent_classifier(self, query: str) -> Dict[str, Any]:
-        """Local rule-based classifier"""
-        q = query.lower()
-
-        if any(k in q for k in ['what is', 'explain', 'how does', 'definition', 'meaning', 'concept', 'tell me about']):
-            if any(k in q for k in ['virustotal', 'wazuh', 'misp', 'shodan', 'mcp', 'copilot']):
-                return {'intent': 'tool_explanation', 'query_type': 'tool_explanation', 'recommendation': 'Explaining security tool functionality directly.'}
-            return {'intent': 'general_question', 'query_type': 'general_question', 'recommendation': 'Answering security concept question using AI knowledge base.'}
-
-        if any(k in q for k in ['check ip', 'check hash', 'check url', 'check domain', 'vt', 'lookup', 'reputation']):
-            return {'intent': 'ioc_lookup', 'query_type': 'ioc_lookup', 'recommendation': 'Querying VirusTotal MCP for indicator threat intelligence.'}
-
-        if any(k in q for k in ['alert', 'investigate', 'incident', 'compromise', 'triage', 'failed login']):
-            return {'intent': 'investigate_alert', 'query_type': 'incident_investigation', 'recommendation': 'Correlating SIEM telemetry and threat intelligence feeds.'}
-
-        if any(k in q for k in ['hunt', 'ioc', 'recon', 'search']):
-            return {'intent': 'threat_hunting', 'query_type': 'threat_hunting', 'recommendation': 'Hunting for active threat indicators across endpoint telemetry.'}
-
-        if any(k in q for k in ['vulnerability', 'cve', 'scan', 'patch']):
-            return {'intent': 'assess_vulnerability', 'query_type': 'vulnerability_assessment', 'recommendation': 'Evaluating vulnerability telemetry and patch status.'}
-
-        if any(k in q for k in ['hi', 'hello', 'hey', 'who are you', 'help', 'capabilities']):
+        """Enhanced local rule-based classifier with improved NLP understanding"""
+        q = query.lower().strip()
+        
+        # Enhanced pattern matching for better intent recognition
+        
+        # Conversational and greeting patterns
+        if any(k in q for k in ['hi ', 'hello', 'hey ', 'greetings', 'good morning', 'good afternoon', 'good evening']):
             return {'intent': 'conversational', 'query_type': 'conversational', 'recommendation': 'Greeting user and explaining Copilot capabilities.'}
-
+        
+        if any(k in q for k in ['who are you', 'what are you', 'your capabilities', 'what can you do', 'help me', 'assist me', 'features']):
+            return {'intent': 'conversational', 'query_type': 'conversational', 'recommendation': 'Explaining Copilot capabilities and features.'}
+        
+        # Tool explanation and feature requests
+        if any(k in q for k in ['what is', 'explain', 'how does', 'definition', 'meaning', 'concept', 'tell me about', 'describe', 'overview']):
+            if any(k in q for k in ['virustotal', 'wazuh', 'misp', 'shodan', 'mcp', 'copilot', 'security tool', 'threat intelligence']):
+                return {'intent': 'tool_explanation', 'query_type': 'tool_explanation', 'recommendation': 'Explaining security tool functionality directly.'}
+            if any(k in q for k in ['predictive', 'analytics', 'forecast', 'prediction']):
+                return {'intent': 'predictive_analytics', 'query_type': 'predictive_analytics', 'recommendation': 'Providing predictive security analytics and threat forecasting.'}
+            if any(k in q for k in ['collaborative', 'team', 'shared', 'together']):
+                return {'intent': 'collaborative_investigation', 'query_type': 'collaborative_investigation', 'recommendation': 'Enabling collaborative investigation features.'}
+            if any(k in q for k in ['blockchain', 'evidence', 'integrity', 'chain']):
+                return {'intent': 'blockchain_evidence', 'query_type': 'blockchain_evidence', 'recommendation': 'Providing blockchain evidence integrity features.'}
+            return {'intent': 'general_question', 'query_type': 'general_question', 'recommendation': 'Answering security concept question using AI knowledge base.'}
+        
+        # IOC lookup patterns with various phrasing
+        if any(k in q for k in ['check ip', 'check hash', 'check url', 'check domain', 'vt', 'lookup', 'reputation', 'analyze ip', 'analyze hash', 'investigate ip', 'is this ip malicious', 'is this hash malicious']):
+            return {'intent': 'ioc_lookup', 'query_type': 'ioc_lookup', 'recommendation': 'Querying VirusTotal MCP for indicator threat intelligence.'}
+        
+        # Incident investigation patterns
+        if any(k in q for k in ['alert', 'investigate', 'incident', 'compromise', 'triage', 'failed login', 'security event', 'breach', 'attack', 'suspicious activity']):
+            return {'intent': 'investigate_alert', 'query_type': 'incident_investigation', 'recommendation': 'Correlating SIEM telemetry and threat intelligence feeds.'}
+        
+        # Threat hunting patterns
+        if any(k in q for k in ['hunt', 'threat hunt', 'search for threats', 'find threats', 'active threats', 'recon', 'search ioc']):
+            return {'intent': 'threat_hunting', 'query_type': 'threat_hunting', 'recommendation': 'Hunting for active threat indicators across endpoint telemetry.'}
+        
+        # Vulnerability assessment patterns
+        if any(k in q for k in ['vulnerability', 'cve', 'scan', 'patch', 'security patch', 'unpatched', 'vulnerable']):
+            return {'intent': 'assess_vulnerability', 'query_type': 'vulnerability_assessment', 'recommendation': 'Evaluating vulnerability telemetry and patch status.'}
+        
+        # Predictive analytics patterns
+        if any(k in q for k in ['predict', 'forecast', 'future threat', 'risk assessment', 'threat probability', 'anticipate', 'likelihood']):
+            return {'intent': 'predictive_analytics', 'query_type': 'predictive_analytics', 'recommendation': 'Generating predictive threat analytics and risk assessment.'}
+        
+        # Collaborative investigation patterns
+        if any(k in q for k in ['collaborate', 'team', 'share insight', 'collective intelligence', 'work together', 'joint investigation']):
+            return {'intent': 'collaborative_investigation', 'query_type': 'collaborative_investigation', 'recommendation': 'Enabling collaborative investigation platform features.'}
+        
+        # Blockchain evidence patterns
+        if any(k in q for k in ['blockchain', 'evidence integrity', 'chain of custody', 'evidence verification', 'tamper-proof', 'evidence certificate']):
+            return {'intent': 'blockchain_evidence', 'query_type': 'blockchain_evidence', 'recommendation': 'Providing blockchain evidence integrity and verification features.'}
+        
+        # Anomaly detection patterns
+        if any(k in q for k in ['anomaly', 'unusual', 'abnormal', 'strange behavior', 'outlier', 'deviation']):
+            return {'intent': 'anomaly_detection', 'query_type': 'anomaly_detection', 'recommendation': 'Running neural anomaly detection on security data.'}
+        
+        # Threat actor patterns
+        if any(k in q for k in ['threat actor', 'attacker', 'adversary', 'attribution', 'who is attacking', 'threat profile']):
+            return {'intent': 'threat_actor_persona', 'query_type': 'threat_actor_persona', 'recommendation': 'Analyzing threat actor persona and attribution.'}
+        
+        # Automated response patterns
+        if any(k in q for k in ['automated response', 'auto remediate', 'playbook', 'automatic action', 'self-healing']):
+            return {'intent': 'automated_response', 'query_type': 'automated_response', 'recommendation': 'Executing automated response playbooks.'}
+        
+        # Security posture and overall health
+        if any(k in q for k in ['security posture', 'overall security', 'security health', 'security score', 'how secure are we']):
+            return {'intent': 'security_posture', 'query_type': 'security_posture', 'recommendation': 'Generating overall security posture assessment.'}
+        
+        # Default to general question
         return {'intent': 'general_question', 'query_type': 'general_question', 'recommendation': 'Answering query using Copilot AI knowledge base.'}
 
     # =========================================================================

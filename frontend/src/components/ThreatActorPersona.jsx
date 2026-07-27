@@ -8,6 +8,8 @@ const ThreatActorPersona = () => {
     techniques: [],
     targets: [],
     target_industries: [],
+    geographic_focus: 'Unknown',
+    timestamps: [],
     uses_custom_malware: false,
     uses_zero_day: false,
     uses_encryption: false,
@@ -15,10 +17,18 @@ const ThreatActorPersona = () => {
     uses_opsec: false
   });
 
+  const getApiUrl = (path) => {
+    const base = import.meta.env.VITE_API_URL?.trim();
+    if (base) {
+      return `${base.replace(/\/$/, '')}${path}`;
+    }
+    return path;
+  };
+
   const analyzePersona = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/threat-actor-persona', {
+      const response = await fetch(getApiUrl('/api/threat-actor-persona'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(attackData)
@@ -32,17 +42,41 @@ const ThreatActorPersona = () => {
     }
   };
 
+  const loadSampleData = () => {
+    setAttackData({
+      tools: ['mimikatz', 'powershell', 'cobalt strike'],
+      techniques: ['credential harvesting', 'lateral movement', 'privilege escalation'],
+      targets: ['Active Directory', 'File Servers', 'Database Servers'],
+      target_industries: ['finance', 'healthcare'],
+      geographic_focus: 'Eastern Europe',
+      timestamps: [new Date().toISOString()],
+      uses_custom_malware: true,
+      uses_zero_day: true,
+      uses_encryption: true,
+      uses_anti_forensics: true,
+      uses_opsec: true
+    });
+  };
+
   return (
     <div className="threat-actor-persona">
       <div className="header">
         <h2>🎭 Threat Actor Persona Analysis</h2>
-        <button 
-          className="btn-primary"
-          onClick={analyzePersona}
-          disabled={loading}
-        >
-          {loading ? 'Analyzing...' : 'Analyze Persona'}
-        </button>
+        <div className="header-actions">
+          <button 
+            className="btn-secondary"
+            onClick={loadSampleData}
+          >
+            Load Sample Data
+          </button>
+          <button 
+            className="btn-primary"
+            onClick={analyzePersona}
+            disabled={loading}
+          >
+            {loading ? 'Analyzing...' : 'Analyze Persona'}
+          </button>
+        </div>
       </div>
 
       <div className="attack-data-input">
@@ -120,6 +154,22 @@ const ThreatActorPersona = () => {
                 placeholder="e.g., banking, energy, technology"
               />
             </div>
+            <div className="input-group">
+              <label>Geographic Focus:</label>
+              <select
+                value={attackData.geographic_focus}
+                onChange={(e) => setAttackData({ ...attackData, geographic_focus: e.target.value })}
+                className="form-select"
+              >
+                <option value="Unknown">Unknown</option>
+                <option value="Eastern Europe">Eastern Europe</option>
+                <option value="Russia">Russia</option>
+                <option value="North Korea">North Korea</option>
+                <option value="China">China</option>
+                <option value="Iran">Iran</option>
+                <option value="Western">Western</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -149,35 +199,116 @@ const ThreatActorPersona = () => {
 
           <div className="persona-profile">
             <h4>Persona Profile</h4>
-            <div className="profile-traits">
-              <div className="trait-item">
-                <span className="trait-label">Personality:</span>
-                <span className="trait-value">{personaAnalysis.persona_profile?.personality || 'Unknown'}</span>
+            <div className="profile-sections">
+              <div className="profile-section">
+                <h5>Personality Traits</h5>
+                <div className="traits-grid">
+                  {Object.entries(personaAnalysis.persona_profile?.personality_traits || {}).map(([trait, value]) => (
+                    <div key={trait} className="trait-card">
+                      <span className="trait-name">{trait.charAt(0).toUpperCase() + trait.slice(1)}</span>
+                      <span className={`trait-value ${value.toLowerCase()}`}>{value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="trait-item">
-                <span className="trait-label">Motivation:</span>
-                <span className="trait-value">{personaAnalysis.persona_profile?.motivation || 'Unknown'}</span>
+
+              <div className="profile-section">
+                <h5>Motivation Analysis</h5>
+                <div className="motivation-card">
+                  <div className="motivation-primary">
+                    <span className="label">Primary Motivation:</span>
+                    <span className={`value ${personaAnalysis.persona_profile?.motivation?.primary_motivation?.toLowerCase()}`}>
+                      {personaAnalysis.persona_profile?.motivation?.primary_motivation || 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="motivation-confidence">
+                    <span className="label">Confidence:</span>
+                    <div className="confidence-bar">
+                      <div 
+                        className="confidence-fill"
+                        style={{ width: `${(personaAnalysis.persona_profile?.motivation?.confidence || 0) * 100}%` }}
+                      />
+                      <span className="confidence-text">{Math.round((personaAnalysis.persona_profile?.motivation?.confidence || 0) * 100)}%</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="trait-item">
-                <span className="trait-label">Attack Style:</span>
-                <span className="trait-value">{personaAnalysis.persona_profile?.attack_style || 'Unknown'}</span>
+
+              <div className="profile-section">
+                <h5>Behavioral Profile</h5>
+                <div className="behavioral-grid">
+                  {Object.entries(personaAnalysis.persona_profile?.behavioral_profile || {}).map(([behavior, value]) => (
+                    <div key={behavior} className="behavior-item">
+                      <span className="behavior-label">{behavior.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}</span>
+                      <span className="behavior-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="trait-item">
-                <span className="trait-label">Sophistication:</span>
-                <span className="trait-value">{personaAnalysis.persona_profile?.sophistication || 'Unknown'}</span>
+
+              <div className="profile-section">
+                <h5>Technical Profile</h5>
+                <div className="technical-card">
+                  <div className="technical-item">
+                    <span className="label">Sophistication Level:</span>
+                    <span className={`value ${personaAnalysis.persona_profile?.technical_profile?.sophistication_level?.toLowerCase()}`}>
+                      {personaAnalysis.persona_profile?.technical_profile?.sophistication_level || 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="technical-item">
+                    <span className="label">Complexity Score:</span>
+                    <div className="score-bar">
+                      <div 
+                        className="score-fill"
+                        style={{ width: `${personaAnalysis.persona_profile?.technical_profile?.complexity_score || 0}%` }}
+                      />
+                      <span className="score-text">{personaAnalysis.persona_profile?.technical_profile?.complexity_score || 0}/100</span>
+                    </div>
+                  </div>
+                  <div className="capabilities-list">
+                    <span className="label">Key Capabilities:</span>
+                    <div className="capabilities">
+                      {personaAnalysis.persona_profile?.technical_profile?.key_capabilities?.map((cap, index) => (
+                        <span key={index} className="capability-tag">{cap}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="behavioral-predictions">
             <h4>Behavioral Predictions</h4>
-            <div className="predictions-list">
-              {personaAnalysis.behavioral_predictions?.likely_next_actions?.map((action, index) => (
-                <div key={index} className="prediction-item">
-                  <span className="action-text">{action.action}</span>
-                  <span className="action-probability">{action.probability}</span>
+            <div className="predictions-sections">
+              <div className="prediction-section">
+                <h5>Short-term Predictions</h5>
+                <ul>
+                  {personaAnalysis.behavioral_predictions?.short_term_predictions?.map((prediction, index) => (
+                    <li key={index}>{prediction}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="prediction-section">
+                <h5>Long-term Predictions</h5>
+                <ul>
+                  {personaAnalysis.behavioral_predictions?.long_term_predictions?.map((prediction, index) => (
+                    <li key={index}>{prediction}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="prediction-section">
+                <h5>Likely Next Targets</h5>
+                <div className="targets-list">
+                  {personaAnalysis.behavioral_predictions?.likely_next_targets?.map((target, index) => (
+                    <span key={index} className="target-tag">{target}</span>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <div className="prediction-section">
+                <h5>Evolution Trajectory</h5>
+                <p className="evolution-text">{personaAnalysis.behavioral_predictions?.evolution_trajectory || 'Unknown'}</p>
+              </div>
             </div>
           </div>
 
@@ -199,9 +330,28 @@ const ThreatActorPersona = () => {
 
           <div className="similar-incidents">
             <h4>Similar Historical Incidents</h4>
+            {personaAnalysis.similar_incidents?.length > 0 ? (
+              <div className="incidents-grid">
+                {personaAnalysis.similar_incidents.map((incident, index) => (
+                  <div key={index} className="incident-card">
+                    <div className="incident-pattern">{incident.pattern}</div>
+                    <div className="incident-stats">
+                      <span className="stat">Similar incidents: {incident.similar_incidents}</span>
+                      <span className="confidence">Confidence: {Math.round(incident.confidence * 100)}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-incidents">No similar incidents found</p>
+            )}
+          </div>
+
+          <div className="intelligence-gaps">
+            <h4>Intelligence Gaps</h4>
             <ul>
-              {personaAnalysis.similar_incidents?.map((incident, index) => (
-                <li key={index}>{incident}</li>
+              {personaAnalysis.threat_intelligence_gaps?.map((gap, index) => (
+                <li key={index} className="gap-item">{gap}</li>
               ))}
             </ul>
           </div>

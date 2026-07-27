@@ -5,6 +5,7 @@ import BlockchainEvidence from './components/BlockchainEvidence';
 import NeuralAnomalyDetection from './components/NeuralAnomalyDetection';
 import ThreatActorPersona from './components/ThreatActorPersona';
 import AutomatedResponse from './components/AutomatedResponse';
+import './styles/components.css';
 
 const starterMessages = [
   {
@@ -22,7 +23,7 @@ function App() {
   const [investigations, setInvestigations] = useState([]);
   const [selectedCase, setSelectedCase] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [currentView, setCurrentView] = useState('chat'); // 'chat', 'dashboard', 'analytics', 'predictive', 'collaborative', 'blockchain', 'anomaly', 'threat-actor', 'response'

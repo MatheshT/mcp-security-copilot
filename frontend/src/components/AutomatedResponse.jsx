@@ -14,6 +14,8 @@ const AutomatedResponse = () => {
     compliance_impact: 'medium'
   });
   const [selectedPlaybook, setSelectedPlaybook] = useState('malware');
+  const [responseStatus, setResponseStatus] = useState(null);
+  const [responseReport, setResponseReport] = useState(null);
 
   const initiateResponse = async (autoApprove = false) => {
     setLoading(true);
@@ -28,8 +30,8 @@ const AutomatedResponse = () => {
         })
       });
       const data = await response.json();
-      setResponses([...responses, data]);
-      setCurrentResponse(data);
+      setResponses([...responses, data.response]);
+      setCurrentResponse(data.response);
     } catch (error) {
       console.error('Error initiating automated response:', error);
     } finally {
@@ -37,10 +39,46 @@ const AutomatedResponse = () => {
     }
   };
 
+  const getResponseStatus = async (responseId) => {
+    try {
+      const response = await fetch(`/api/response/${responseId}/status`);
+      const data = await response.json();
+      setResponseStatus(data.response_status);
+    } catch (error) {
+      console.error('Error getting response status:', error);
+    }
+  };
+
+  const generateResponseReport = async (responseId) => {
+    try {
+      const response = await fetch(`/api/response/${responseId}/report`);
+      const data = await response.json();
+      setResponseReport(data.response_report);
+    } catch (error) {
+      console.error('Error generating response report:', error);
+    }
+  };
+
+  const approveAction = async (responseId, actionId) => {
+    try {
+      const response = await fetch(`/api/response/${responseId}/approve/${actionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approver_id: 'admin' })
+      });
+      const data = await response.json();
+      if (currentResponse) {
+        getResponseStatus(currentResponse.response_id);
+      }
+    } catch (error) {
+      console.error('Error approving action:', error);
+    }
+  };
+
   const playbooks = [
-    { id: 'malware', name: 'Malware Containment', severity: 'critical' },
-    { id: 'data_breach', name: 'Data Breach Response', severity: 'critical' },
-    { id: 'ddos', name: 'DDoS Mitigation', severity: 'high' }
+    { id: 'malware', name: 'Malware Containment', severity: 'critical', description: 'Isolate systems, kill processes, block C2' },
+    { id: 'data_breach', name: 'Data Breach Response', severity: 'critical', description: 'Block exfiltration, preserve evidence, notify stakeholders' },
+    { id: 'ddos', name: 'DDoS Mitigation', severity: 'high', description: 'Activate mitigation, rate limit, enable scrubbing' }
   ];
 
   return (
@@ -141,6 +179,20 @@ const AutomatedResponse = () => {
 
       <div className="response-actions">
         <button 
+          className="btn-secondary"
+          onClick={() => currentResponse && getResponseStatus(currentResponse.response_id)}
+          disabled={!currentResponse}
+        >
+          Check Status
+        </button>
+        <button 
+          className="btn-info"
+          onClick={() => currentResponse && generateResponseReport(currentResponse.response_id)}
+          disabled={!currentResponse}
+        >
+          Generate Report
+        </button>
+        <button 
           className="btn-primary"
           onClick={() => initiateResponse(false)}
           disabled={loading}
@@ -162,7 +214,7 @@ const AutomatedResponse = () => {
           <div className="response-summary">
             <div className="summary-item">
               <span className="label">Response ID:</span>
-              <span className="value">{currentResponse.response_id}</span>
+              <span className="value">{currentResponse.response_id?.slice(0, 8)}...</span>
             </div>
             <div className="summary-item">
               <span className="label">Playbook:</span>
@@ -170,7 +222,15 @@ const AutomatedResponse = () => {
             </div>
             <div className="summary-item">
               <span className="label">Status:</span>
-              <span className="value">In Progress</span>
+              <span className={`value ${responseStatus?.status?.toLowerCase() || 'in-progress'}`}>{responseStatus?.status || 'In Progress'}</span>
+            </div>
+            <div className="summary-item">
+              <span className="label">Effectiveness Score:</span>
+              <span className="value">{responseStatus?.effectiveness_score || 0}%</span>
+            </div>
+            <div className="summary-item">
+              <span className="label">Current Phase:</span>
+              <span className="value">{responseStatus?.current_phase || 'initializing'}</span>
             </div>
             <div className="summary-item">
               <span className="label">Automated Actions:</span>
@@ -179,6 +239,10 @@ const AutomatedResponse = () => {
             <div className="summary-item">
               <span className="label">Actions Requiring Approval:</span>
               <span className="value">{currentResponse.actions_requiring_approval}</span>
+            </div>
+            <div className="summary-item">
+              <span className="label">Estimated Completion:</span>
+              <span className="value">{currentResponse.estimated_completion_time}</span>
             </div>
           </div>
 
@@ -219,6 +283,118 @@ const AutomatedResponse = () => {
             <a href={currentResponse.monitoring_url} target="_blank" rel="noopener noreferrer">
               Monitor Response Progress →
             </a>
+          </div>
+
+          <div className="pending-actions">
+            <h4>Pending Actions (Require Approval)</h4>
+            {currentResponse.execution_results?.pending_approval?.length > 0 ? (
+              <div className="pending-list">
+                {currentResponse.execution_results.pending_approval.map((action, index) => (
+                  <div key={index} className="pending-item">
+                    <div className="action-info">
+                      <span className="action-name">{action.action}</span>
+                      <span className="action-reason">{action.reason}</span>
+                    </div>
+                    <button 
+                      className="btn-approve"
+                      onClick={() => approveAction(currentResponse.response_id, action.action_id)}
+                    >
+                      Approve
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-pending">No pending actions</p>
+            )}
+          </div>
+
+          <div className="successful-actions">
+            <h4>Successfully Executed Actions</h4>
+            {currentResponse.execution_results?.successful?.length > 0 ? (
+              <div className="success-list">
+                {currentResponse.execution_results.successful.map((action, index) => (
+                  <div key={index} className="success-item">
+                    <span className="action-icon">✓</span>
+                    <span className="action-name">{action.action}</span>
+                    <span className="action-time">{action.timestamp}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-success">No actions executed yet</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {responseReport && (
+        <div className="response-report">
+          <h3>Response Report</h3>
+          <div className="report-summary">
+            <div className="report-section">
+              <h4>Actions Summary</h4>
+              <div className="summary-grid">
+                <div className="summary-card">
+                  <span className="label">Total Planned:</span>
+                  <span className="value">{responseReport.actions_summary?.total_planned || 0}</span>
+                </div>
+                <div className="summary-card">
+                  <span className="label">Automated:</span>
+                  <span className="value">{responseReport.actions_summary?.automated || 0}</span>
+                </div>
+                <div className="summary-card">
+                  <span className="label">Manual:</span>
+                  <span className="value">{responseReport.actions_summary?.manual || 0}</span>
+                </div>
+                <div className="summary-card">
+                  <span className="label">Successful:</span>
+                  <span className="value">{responseReport.actions_summary?.successful || 0}</span>
+                </div>
+                <div className="summary-card">
+                  <span className="label">Failed:</span>
+                  <span className="value">{responseReport.actions_summary?.failed || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="report-section">
+              <h4>Effectiveness Metrics</h4>
+              <div className="metrics-grid">
+                <div className="metric-item">
+                  <span className="label">Overall Score:</span>
+                  <span className={`value ${responseReport.effectiveness_metrics?.overall_score > 80 ? 'good' : 'needs-improvement'}`}>
+                    {responseReport.effectiveness_metrics?.overall_score || 0}%
+                  </span>
+                </div>
+                <div className="metric-item">
+                  <span className="label">Time Efficiency:</span>
+                  <span className="value">{responseReport.effectiveness_metrics?.time_efficiency || 'N/A'}</span>
+                </div>
+                <div className="metric-item">
+                  <span className="label">Resource Utilization:</span>
+                  <span className="value">{responseReport.effectiveness_metrics?.resource_utilization || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="report-section">
+              <h4>Lessons Learned</h4>
+              <ul>
+                {responseReport.lessons_learned?.map((lesson, index) => (
+                  <li key={index}>{lesson}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="report-section">
+              <h4>Recommendations</h4>
+              <ul>
+                {responseReport.recommendations?.map((rec, index) => (
+                  <li key={index}>{rec}</li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       )}
