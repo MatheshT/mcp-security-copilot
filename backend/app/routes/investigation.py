@@ -13,7 +13,6 @@ from app.threat_actor_persona import ThreatActorPersonaEngine
 from app.automated_response import AutomatedResponseOrchestrator
 
 router = APIRouter(
-    prefix="/api",
     tags=["investigation"]
 )
 

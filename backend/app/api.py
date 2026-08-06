@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .routes import dashboard, search, report, investigation
+from .routes import dashboard, search, report, investigation, users, audit, backup, feature_flags, windows_logs
 
 router = APIRouter()
 
@@ -8,6 +8,11 @@ router.include_router(investigation.router)
 router.include_router(dashboard.router)
 router.include_router(search.router)
 router.include_router(report.router)
+router.include_router(users.router)
+router.include_router(audit.router)
+router.include_router(backup.router)
+router.include_router(feature_flags.router)
+router.include_router(windows_logs.router)
 
 @router.get("/health")
 async def health_check():

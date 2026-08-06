@@ -6,6 +6,13 @@ from .tool_server import ToolRequest, ToolResponse
 logger = logging.getLogger(__name__)
 
 class MCPClient:
+    TOOL_ALIASES = {
+        'wazuh_get_alerts': 'Wazuh',
+        'virustotal_lookup': 'VirusTotal',
+        'wazuh_alerts': 'Wazuh',
+        'virustotal': 'VirusTotal',
+    }
+
     def __init__(self, registry: Optional[Dict[str, Any]] = None):
         self.registry = registry or {}
         self.provider = os.getenv('MCP_PROVIDER', 'local').lower()
@@ -17,7 +24,8 @@ class MCPClient:
         logger.info(f"Registered tool: {tool_name}")
 
     def get_tool(self, tool_name: str) -> Any:
-        tool = self.registry.get(tool_name)
+        actual_name = self.TOOL_ALIASES.get(tool_name, tool_name)
+        tool = self.registry.get(actual_name)
         if not tool:
             raise ValueError(f'Tool not registered: {tool_name}')
         return tool

@@ -177,6 +177,22 @@ class SecurityCopilotOrchestrator:
                 shodan_response = self.mcp_client.call_tool("Shodan", f"search {target}")
                 responses.append(shodan_response)
 
+            elif tool_name_lower in ["windowslogs", "windows_event"]:
+                print(">>> EXECUTING WINDOWS LOGS MCP TOOL <<<")
+                cmd_list = tool_commands.get('WindowsLogs', [])
+                cmd = cmd_list[0] if cmd_list else "get_security_events"
+                print(f"Calling WindowsLogs MCP: {cmd}")
+                win_response = self.mcp_client.call_tool("WindowsLogs", cmd)
+                responses.append(win_response)
+
+            elif tool_name_lower in ["windowsdefender", "defender"]:
+                print(">>> EXECUTING WINDOWS DEFENDER MCP TOOL <<<")
+                cmd_list = tool_commands.get('WindowsDefender', [])
+                cmd = cmd_list[0] if cmd_list else "get_threats"
+                print(f"Calling WindowsDefender MCP: {cmd}")
+                def_response = self.mcp_client.call_tool("WindowsDefender", cmd)
+                responses.append(def_response)
+
         # Step 4: Build Modular Tool Reports & Unified SOC Report
         tool_dicts = [response.dict() for response in responses]
         unified = build_unified_investigation_result(tool_dicts)

@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats():

@@ -1,0 +1,52 @@
+{
+  "predictive_analytics": {
+    "enabled": true,
+    "description": "Enable predictive security analytics",
+    "rollout_percentage": 100
+  },
+  "collaborative_investigation": {
+    "enabled": true,
+    "description": "Enable collaborative investigation features",
+    "rollout_percentage": 100
+  },
+  "blockchain_evidence": {
+    "enabled": true,
+    "description": "Enable blockchain evidence integrity",
+    "rollout_percentage": 100
+  },
+  "neural_anomaly_detection": {
+    "enabled": true,
+    "description": "Enable neural network anomaly detection",
+    "rollout_percentage": 100
+  },
+  "threat_actor_persona": {
+    "enabled": true,
+    "description": "Enable threat actor persona analysis",
+    "rollout_percentage": 100
+  },
+  "automated_response": {
+    "enabled": true,
+    "description": "Enable automated response orchestration",
+    "rollout_percentage": 100
+  },
+  "real_time_monitoring": {
+    "enabled": false,
+    "description": "Enable real-time security monitoring",
+    "rollout_percentage": 0
+  },
+  "advanced_reporting": {
+    "enabled": true,
+    "description": "Enable advanced reporting features",
+    "rollout_percentage": 100
+  },
+  "api_v2": {
+    "enabled": true,
+    "description": "Enable API v2 endpoints",
+    "rollout_percentage": 100
+  },
+  "dark_mode": {
+    "enabled": true,
+    "description": "Enable dark mode UI",
+    "rollout_percentage": 100
+  }
+}

@@ -14,7 +14,9 @@ def extract_tool_reports(tool_responses: List[Dict[str, Any]]) -> Dict[str, Any]
         "virustotal_report": None,
         "wazuh_report": None,
         "misp_report": None,
-        "shodan_report": None
+        "shodan_report": None,
+        "windowslogs_report": None,
+        "windowsdefender_report": None
     }
 
     for resp in tool_responses:
@@ -129,6 +131,54 @@ def extract_tool_reports(tool_responses: List[Dict[str, Any]]) -> Dict[str, Any]
                     }
                 }
 
+        # ---------------------------------------------------------------------
+        # WINDOWS LOGS REPORT
+        # ---------------------------------------------------------------------
+        elif tool_name in ["windowslogs", "windows_event"]:
+            events = payload.get("events", []) or payload.get("logs", [])
+            if events:
+                event = events[0]
+                reports["windowslogs_report"] = {
+                    "tool": "Windows Event Logs",
+                    "event_id": str(event.get("event_id") or "N/A"),
+                    "windows_event_id": str(event.get("windows_event_id") or event.get("event_id") or "N/A"),
+                    "severity": event.get("severity", "Medium"),
+                    "title": event.get("title", "Windows Event Log"),
+                    "hostname": event.get("hostname") or event.get("computer_name") or "Unknown Host",
+                    "username": event.get("username") or event.get("user") or "N/A",
+                    "source_ip": event.get("source_ip") or "N/A",
+                    "timestamp": event.get("timestamp") or "N/A",
+                    "status": event.get("status") or "Open",
+                    "description": event.get("description") or event.get("xml_representation") or "",
+                    "visual_data": {
+                        "severity_score": 90 if event.get("severity") == "Critical" else 75 if event.get("severity") == "High" else 50 if event.get("severity") == "Medium" else 25,
+                    }
+                }
+
+        # ---------------------------------------------------------------------
+        # WINDOWS DEFENDER REPORT
+        # ---------------------------------------------------------------------
+        elif tool_name in ["windowsdefender", "defender"]:
+            threats = payload.get("threats", []) or payload.get("logs", [])
+            if threats:
+                threat = threats[0]
+                reports["windowsdefender_report"] = {
+                    "tool": "Windows Defender",
+                    "threat_id": str(threat.get("threat_id") or "N/A"),
+                    "threat_name": threat.get("threat_name", "Unknown Threat"),
+                    "threat_type": threat.get("threat_type", "N/A"),
+                    "severity": threat.get("severity", "Medium"),
+                    "category": threat.get("category", "Malware"),
+                    "hostname": threat.get("hostname") or "Unknown Host",
+                    "file_path": threat.get("file_path", "N/A"),
+                    "timestamp": threat.get("detection_time") or threat.get("timestamp") or "N/A",
+                    "status": threat.get("status") or "Quarantined",
+                    "action_taken": threat.get("action_taken") or "Quarantine",
+                    "visual_data": {
+                        "severity_score": 95 if threat.get("severity") == "Critical" else 75 if threat.get("severity") == "High" else 45 if threat.get("severity") == "Medium" else 15,
+                    }
+                }
+
     return reports
 
 
@@ -141,6 +191,8 @@ def build_unified_investigation_result(tool_responses: List[Dict[str, Any]]) -> 
     wazuh_rep = tool_reports.get("wazuh_report")
     misp_rep = tool_reports.get("misp_report")
     shodan_rep = tool_reports.get("shodan_report")
+    win_rep = tool_reports.get("windowslogs_report")
+    def_rep = tool_reports.get("windowsdefender_report")
 
     # 1. Determine Alert ID & Affected Host
     if wazuh_rep:
@@ -152,6 +204,24 @@ def build_unified_investigation_result(tool_responses: List[Dict[str, Any]]) -> 
         attack_type = wazuh_rep["title"]
         severity = wazuh_rep["severity"]
         status = wazuh_rep["status"]
+    elif win_rep:
+        alert_id = win_rep["event_id"]
+        affected_host = win_rep["hostname"]
+        source_ip = win_rep["source_ip"]
+        destination_ip = "N/A"
+        mitre = win_rep.get("mitre", "N/A")
+        attack_type = win_rep["title"]
+        severity = win_rep["severity"]
+        status = win_rep["status"]
+    elif def_rep:
+        alert_id = def_rep["threat_id"]
+        affected_host = def_rep["hostname"]
+        source_ip = "N/A"
+        destination_ip = "N/A"
+        mitre = def_rep.get("mitre", "N/A")
+        attack_type = def_rep["threat_name"]
+        severity = def_rep["severity"]
+        status = def_rep["status"]
     else:
         alert_id = "N/A"
         affected_host = "N/A"
@@ -170,11 +240,19 @@ def build_unified_investigation_result(tool_responses: List[Dict[str, Any]]) -> 
         primary_ioc = misp_rep["ioc"]
     elif wazuh_rep and wazuh_rep.get("source_ip"):
         primary_ioc = wazuh_rep["source_ip"]
+    elif win_rep and win_rep.get("source_ip") != "N/A":
+        primary_ioc = win_rep["source_ip"]
+    elif def_rep and def_rep.get("file_path") != "N/A":
+        primary_ioc = def_rep["file_path"]
 
     # 3. Build Unified Summary
     summary_parts = []
     if wazuh_rep:
         summary_parts.append(f"Wazuh SIEM generated Alert #{alert_id} ({wazuh_rep['severity']} severity) for {wazuh_rep['title']} on host {affected_host}.")
+    if win_rep:
+        summary_parts.append(f"Windows Event Log captured Event ID {win_rep['windows_event_id']} ({win_rep['severity']} severity) for {win_rep['title']} on host {win_rep['hostname']} by user {win_rep['username']}.")
+    if def_rep:
+        summary_parts.append(f"Windows Defender flagged threat {def_rep['threat_name']} ({def_rep['severity']} severity) at {def_rep['file_path']} on host {def_rep['hostname']}. Status: {def_rep['status']}.")
     if vt_rep:
         summary_parts.append(f"VirusTotal threat intelligence flagged target {vt_rep['indicator']} as {vt_rep['reputation']} with {vt_rep['detections']} malicious scanner detections.")
     if misp_rep:
