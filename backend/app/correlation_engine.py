@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Literal, Optional, Set, Tuple
 
 RiskLevel = Literal['Low', 'Medium', 'High', 'Critical', 'Info']
@@ -15,13 +16,31 @@ def extract_tool_reports(tool_responses: List[Dict[str, Any]]) -> Dict[str, Any]
         "wazuh_report": None,
         "misp_report": None,
         "shodan_report": None,
+        "abuseipdb_report": None,
+        "alienvault_report": None,
         "windowslogs_report": None,
         "windowsdefender_report": None
     }
 
     for resp in tool_responses:
-        tool_name = str(resp.get("tool_name", "")).strip().lower()
-        payload = resp.get("data", {})
+        # Handle both ToolResponse objects and raw dict responses
+        if hasattr(resp, 'dict'):
+            resp_dict = resp.dict()
+        elif isinstance(resp, dict):
+            resp_dict = resp
+        else:
+            resp_dict = {"tool": str(resp), "data": resp}
+        
+        # Extract tool name and payload with fallbacks
+        tool_name = str(resp_dict.get("tool_name", resp_dict.get("tool", ""))).strip().lower()
+        payload = resp_dict.get("data", {})
+        
+        # Handle case where payload might be a list instead of dict
+        if isinstance(payload, list):
+            payload = {"data": payload}
+        elif not isinstance(payload, dict):
+            payload = {"data": payload}
+        
         if not payload:
             continue
 
@@ -64,23 +83,62 @@ def extract_tool_reports(tool_responses: List[Dict[str, Any]]) -> Dict[str, Any]
             alerts = payload.get("alerts", [])
             if alerts:
                 alert = alerts[0]
-                raw = alert.get("raw", {})
+                # Calculate severity from Wazuh rule level with type conversion
+                rule_level = alert.get("rule", {}).get("level", 0)
+                # Ensure level is an integer
+                try:
+                    level_int = int(rule_level) if rule_level is not None else 0
+                    if level_int >= 12:
+                        severity = "Critical"
+                    elif level_int >= 10:
+                        severity = "High"
+                    elif level_int >= 7:
+                        severity = "Medium"
+                    elif level_int >= 4:
+                        severity = "Low"
+                    else:
+                        severity = "Info"
+                except (ValueError, TypeError):
+                    severity = "Info"  # Default to Info if level is invalid
+                
                 reports["wazuh_report"] = {
                     "tool": "Wazuh SIEM",
-                    "alert_id": str(alert.get("alert_id") or alert.get("id") or "101"),
-                    "severity": str(alert.get("severity", "High")).capitalize(),
-                    "title": alert.get("event") or alert.get("title") or alert.get("description") or "Security Alert",
-                    "source_ip": alert.get("source_ip") or raw.get("src_ip") or raw.get("source_ip") or "N/A",
-                    "destination_ip": alert.get("destination_ip") or raw.get("dst_ip") or "N/A",
-                    "destination_host": alert.get("hostname") or raw.get("hostname") or alert.get("agent") or "Unknown Host",
-                    "agent": alert.get("agent") or raw.get("agent") or "Agent-01",
-                    "mitre": alert.get("mitre") or raw.get("mitre") or "T1110",
-                    "status": alert.get("status") or "Open",
-                    "timestamp": alert.get("timestamp") or "2026-07-21 10:15:30",
+                    "alert_id": str(alert.get("id", "unknown")),
+                    "severity": severity,
+                    "title": alert.get("rule", {}).get("description", "Security Alert"),
+                    "source_ip": alert.get("source_ip", "N/A"),
+                    "destination_ip": alert.get("destination_ip", "N/A"),
+                    "destination_host": alert.get("agent", {}).get("name", "Unknown Host"),
+                    "agent": alert.get("agent", {}).get("name", "Unknown Agent"),
+                    "mitre": alert.get("mitre", {}),
+                    "status": "Open",
+                    "timestamp": alert.get("timestamp", datetime.now().isoformat()),
+                    "rule_level": rule_level,
                     "visual_data": {
-                        "severity_score": 90 if alert.get("severity") == "Critical" else 75 if alert.get("severity") == "High" else 50 if alert.get("severity") == "Medium" else 25,
-                        "mitre_tactic": "Credential Access",
-                        "attack_chain": ["Reconnaissance", "Initial Access", "Credential Access"]
+                        "severity_score": 90 if severity == "Critical" else 75 if severity == "High" else 50 if severity == "Medium" else 25,
+                        "mitre_tactic": "Security Monitoring",
+                        "attack_chain": ["Detection", "Analysis", "Response"]
+                    }
+                }
+            else:
+                # No alerts found - create a report indicating no security events
+                reports["wazuh_report"] = {
+                    "tool": "Wazuh SIEM",
+                    "alert_id": "N/A",
+                    "severity": "Info",
+                    "title": "No Security Alerts",
+                    "source_ip": "N/A",
+                    "destination_ip": "N/A",
+                    "destination_host": "N/A",
+                    "agent": "N/A",
+                    "mitre": {},
+                    "status": "Clear",
+                    "timestamp": datetime.now().isoformat(),
+                    "rule_level": 0,
+                    "visual_data": {
+                        "severity_score": 0,
+                        "mitre_tactic": "Security Monitoring",
+                        "attack_chain": []
                     }
                 }
 
@@ -128,6 +186,50 @@ def extract_tool_reports(tool_responses: List[Dict[str, Any]]) -> Dict[str, Any]
                         "vulnerability_count": len(result.get("vulnerabilities", [])),
                         "port_count": len(result.get("ports", [])),
                         "risk_factor": "High" if len(result.get("vulnerabilities", [])) > 2 else "Medium"
+                    }
+                }
+
+        # ---------------------------------------------------------------------
+        # ABUSEIPDB REPORT
+        # ---------------------------------------------------------------------
+        elif tool_name == "abuseipdb":
+            result = payload.get("result", {})
+            if result:
+                reports["abuseipdb_report"] = {
+                    "tool": "AbuseIPDB",
+                    "ip_address": result.get("ip_address", payload.get("ip", "N/A")),
+                    "abuse_confidence_score": result.get("abuse_confidence_score", 0),
+                    "total_reports": result.get("total_reports", 0),
+                    "country_code": result.get("country_code", "Unknown"),
+                    "country_name": result.get("country_name", "Unknown"),
+                    "isp": result.get("isp", "Unknown"),
+                    "risk_level": result.get("risk_level", "Medium"),
+                    "visual_data": {
+                        "confidence_score": result.get("abuse_confidence_score", 0),
+                        "report_count": result.get("total_reports", 0),
+                        "risk_assessment": "High" if result.get("abuse_confidence_score", 0) > 50 else "Medium" if result.get("abuse_confidence_score", 0) > 25 else "Low"
+                    }
+                }
+
+        # ---------------------------------------------------------------------
+        # ALIENVAULT OTX REPORT
+        # ---------------------------------------------------------------------
+        elif tool_name == "alienvault" or tool_name == "alienvault otx":
+            result = payload.get("result", {})
+            if result:
+                reports["alienvault_report"] = {
+                    "tool": "AlienVault OTX",
+                    "indicator": result.get("indicator", payload.get("ip", "N/A")),
+                    "reputation": result.get("reputation", "Unknown"),
+                    "pulse_count": result.get("pulse_count", 0),
+                    "first_seen": result.get("first_seen", "N/A"),
+                    "last_seen": result.get("last_seen", "N/A"),
+                    "tags": result.get("tags", []),
+                    "risk_level": result.get("risk_level", "Medium"),
+                    "visual_data": {
+                        "threat_score": min(100, result.get("pulse_count", 0) * 10),
+                        "pulse_count": result.get("pulse_count", 0),
+                        "risk_assessment": result.get("risk_level", "Medium")
                     }
                 }
 

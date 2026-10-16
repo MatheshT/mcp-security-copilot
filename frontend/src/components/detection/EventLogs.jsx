@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import { getEventLogs } from '../../services/api';
 
 const EventLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -36,7 +36,7 @@ const EventLogs = () => {
       setLoading(true);
       setError(null);
 
-      const logsData = await api.getEventLogs(filters.timeRange);
+      const logsData = await getEventLogs(filters.timeRange);
       if (logsData) {
         setLogs(logsData.logs || []);
       }
@@ -328,7 +328,7 @@ const EventLogs = () => {
   }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif' }}>
+    <div className="detection-dark-view" style={{ padding: '20px', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif' }}>
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ margin: 0, color: '#1e3a5f' }}>📋 Event Logs</h2>
@@ -389,7 +389,7 @@ const EventLogs = () => {
 
       {/* Filters */}
       <div style={{ 
-        backgroundColor: 'white', 
+        backgroundColor: 'var(--bg-surface)',
         padding: '16px', 
         borderRadius: '8px', 
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)', 
@@ -463,7 +463,7 @@ const EventLogs = () => {
       </div>
 
       {/* Logs List */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.35)' }}>
         {filteredLogs.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
             No logs found matching the current filters
@@ -546,7 +546,7 @@ const EventLogs = () => {
           zIndex: 1000
         }}>
           <div style={{ 
-            backgroundColor: 'white', 
+            backgroundColor: 'var(--bg-surface)', 
             borderRadius: '8px', 
             maxWidth: '900px', 
             width: '90%', 

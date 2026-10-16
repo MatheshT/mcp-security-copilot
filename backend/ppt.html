@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generating PowerPoint...</title>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+</head>
+<body>
+    <p style="font-family:sans-serif; text-align:center; margin-top:50px;">Your PowerPoint is downloading... If it doesn't download, please ensure your browser allows pop-ups.</p>
+    <script>
+        const pptx = new PptxGenJS();
+        pptx.layout = "LAYOUT_WIDE";
+        const colors = {
+            ink: "0A1F2E", deep: "06283D", teal: "0F766E", aqua: "2DD4BF",
+            foam: "E8F4F1", cream: "FBF7EF", coral: "E85D3C"
+        };
+
+        // Slide 1: Cover
+        let s1 = pptx.addSlide();
+        s1.background = { color: colors.deep };
+        s1.addText("Water", { x: 0.5, y: 1.2, w: 9, h: 1, fontSize: 60, color: colors.foam, bold: true, fontFace: "Arial" });
+        s1.addText("Conservation.", { x: 0.5, y: 2.0, w: 9, h: 1, fontSize: 60, color: colors.aqua, italic: true, bold: true, fontFace: "Arial" });
+        s1.addText("A quiet emergency wrapped in everyday privilege. Six slides on why every drop counts — and what we can still save.", { x: 0.5, y: 3.2, w: 6, h: 1.5, fontSize: 16, color: "B0C4C0", fontFace: "Arial" });
+
+        // Slide 2: Why Water Matters
+        let s2 = pptx.addSlide();
+        s2.background = { color: colors.cream };
+        s2.addText("Why water matters.", { x: 0.5, y: 0.4, w: 6, h: 1, fontSize: 40, color: colors.ink, bold: true, fontFace: "Arial" });
+        s2.addText("Water covers 71% of our planet — yet only a sliver is fresh, and an even smaller fraction is accessible for human use.", { x: 0.5, y: 1.4, w: 5.5, h: 1, fontSize: 14, color: "3A4A55", fontFace: "Arial" });
+        s2.addText([
+            { text: "97.5% - Saline water: ", options: { bold: true, color: colors.teal } },
+            { text: "Oceans & seas — undrinkable.\n", options: { color: colors.ink } },
+            { text: "2.5% - Freshwater total: ", options: { bold: true, color: colors.teal } },
+            { text: "Locked in glaciers, groundwater, rivers.\n", options: { color: colors.ink } },
+            { text: "0.3% - Directly usable: ", options: { bold: true, color: colors.teal } },
+            { text: "Available in rivers and lakes for our use.", options: { color: colors.ink } }
+        ], { x: 0.5, y: 2.5, w: 5.5, h: 2, fontSize: 14, bullet: true, fontFace: "Arial", lineSpacing: 28 });
+        s2.addShape(pptx.ShapeType.rect, { x: 6.3, y: 1.2, w: 3.5, h: 4.5, fill: { color: colors.deep } });
+        s2.addText("Earth's Water", { x: 6.3, y: 1.5, w: 3.5, h: 0.5, fontSize: 12, color: colors.aqua, align: "center", bold: true, fontFace: "Arial" });
+        s2.addText("2.5%", { x: 6.3, y: 2.5, w: 3.5, h: 1, fontSize: 54, color: colors.aqua, align: "center", bold: true, fontFace: "Arial" });
+        s2.addText("Freshwater", { x: 6.3, y: 3.5, w: 3.5, h: 0.5, fontSize: 12, color: colors.foam, align: "center", fontFace: "Arial" });
+        s2.addText("The rest — salt, ice, or buried deep — remains out of reach.", { x: 6.6, y: 4.5, w: 3, h: 1, fontSize: 10, color: "B0C4C0", align: "center", fontFace: "Arial" });
+
+        // Slide 3: The Crisis
+        let s3 = pptx.addSlide();
+        s3.background = { color: colors.ink };
+        s3.addText("THE CRISIS", { x: 0.5, y: 0.4, w: 3, h: 0.4, fontSize: 11, color: colors.coral, bold: true, fontFace: "Arial" });
+        s3.addText("We are draining the future faster than it refills.", { x: 0.5, y: 0.8, w: 9, h: 1, fontSize: 32, color: colors.foam, bold: true, italic: true, fontFace: "Arial" });
+        let cardData = [
+            { title: "2.2B", sub: "People without safe water", x: 0.5 },
+            { title: "40%", sub: "Water-stressed population", x: 2.9 },
+            { title: "70%", sub: "Freshwater to agriculture", x: 5.3 },
+            { title: "2050", sub: "Projected demand surge", x: 7.7 }
+        ];
+        cardData.forEach(card => {
+            s3.addShape(pptx.ShapeType.rect, { x: card.x, y: 2.3, w: 2.2, h: 3.5, fill: { color: "152C3A" }, line: { color: "2A4456", width: 1 } });
+            s3.addText(card.title, { x: card.x, y: 2.8, w: 2.2, h: 1, fontSize: 40, color: colors.foam, bold: true, align: "center", fontFace: "Arial" });
+            s3.addText(card.sub, { x: card.x + 0.2, y: 3.8, w: 1.8, h: 1, fontSize: 12, color: "B0C4C0", align: "center", fontFace: "Arial" });
+        });
+
+        // Slide 4: Starts at Home
+        let s4 = pptx.addSlide();
+        s4.background = { color: colors.cream };
+        s4.addText("Starts at home.", { x: 0.5, y: 0.4, w: 5, h: 1, fontSize: 40, color: colors.ink, bold: true, fontFace: "Arial" });
+        let tips = [
+            { t: "Fix the leaks", d: "A dripping tap wastes up to 11,000 litres a year.", s: "Saves 11,000 L/yr" },
+            { t: "Shorter showers", d: "Cut shower from 10 to 5 minutes.", s: "Saves 16,000 L/yr" },
+            { t: "Tap off when brushing", d: "Running tap wastes 6 litres per minute.", s: "Saves 8,000 L/yr" },
+            { t: "Full loads only", d: "Run machines only when full.", s: "Saves 5,000 L/yr" },
+            { t: "Reuse & harvest", d: "Collect rainwater. Reuse cooled cooking water.", s: "Saves 7,000 L/yr" },
+            { t: "Smart fixtures", d: "Install low-flow showerheads & aerators.", s: "Saves 30% usage" }
+        ];
+        let xPos = [0.5, 3.5, 6.5];
+        let yPos = [1.8, 3.8];
+        let i = 0;
+        for(let r=0; r<2; r++) {
+            for(let c=0; c<3; c++) {
+                let tip = tips[i];
+                s4.addShape(pptx.ShapeType.rect, { x: xPos[c], y: yPos[r], w: 2.7, h: 1.8, fill: { color: "FFFFFF" }, line: { color: "E0E0E0", width: 1 } });
+                s4.addText(tip.t, { x: xPos[c] + 0.1, y: yPos[r] + 0.1, w: 2.5, h: 0.4, fontSize: 16, bold: true, color: colors.ink, fontFace: "Arial" });
+                s4.addText(tip.d, { x: xPos[c] + 0.1, y: yPos[r] + 0.5, w: 2.5, h: 0.8, fontSize: 11, color: "3A4A55", fontFace: "Arial" });
+                s4.addText(tip.s, { x: xPos[c] + 0.1, y: yPos[r] + 1.3, w: 2.5, h: 0.4, fontSize: 10, bold: true, color: colors.coral, fontFace: "Arial" });
+                i++;
+            }
+        }
+
+        // Slide 5: Conservation at Scale
+        let s5 = pptx.addSlide();
+        s5.background = { color: colors.cream };
+        s5.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 3.5, h: 5.625, fill: { color: colors.deep } });
+        s5.addText("CONSERVATION AT SCALE", { x: 0.3, y: 0.5, w: 3, h: 0.5, fontSize: 10, color: colors.aqua, bold: true, fontFace: "Arial" });
+        s5.addText("Beyond the tap.", { x: 0.3, y: 1, w: 3, h: 1.5, fontSize: 32, color: colors.foam, bold: true, italic: true, fontFace: "Arial" });
+        s5.addText("Households matter — but agriculture, industry, and policy move the needle by orders of magnitude.", { x: 0.3, y: 2.5, w: 3, h: 1.5, fontSize: 12, color: "B0C4C0", fontFace: "Arial" });
+        
+        let scaleData = [
+            { n: "01", t: "Agricultural reform", s: "70% of global use", d: "Switching to drip irrigation can cut water use by 30–60%." },
+            { n: "02", t: "Industrial recycling", s: "19% of global use", d: "Closed-loop water systems can cut factory intake by up to 90%." },
+            { n: "03", t: "Urban infrastructure", s: "30% lost to leaks", d: "Smart metering and pressure management recover lost water." },
+            { n: "04", t: "Policy & education", s: "Long-term lever", d: "Water pricing and protection laws shift behavior at scale." }
+        ];
+        scaleData.forEach((item, idx) => {
+            let y = 0.4 + (idx * 1.2);
+            s5.addText(item.n, { x: 3.8, y: y, w: 0.5, h: 0.5, fontSize: 24, color: colors.coral, bold: true, fontFace: "Arial" });
+            s5.addText(item.t, { x: 4.3, y: y, w: 4, h: 0.4, fontSize: 16, bold: true, color: colors.ink, fontFace: "Arial" });
+            s5.addText(item.s, { x: 8.3, y: y + 0.05, w: 1.5, h: 0.4, fontSize: 9, color: colors.teal, align: "right", bold: true, fontFace: "Arial" });
+            s5.addText(item.d, { x: 4.3, y: y + 0.45, w: 5.5, h: 0.6, fontSize: 11, color: "3A4A55", fontFace: "Arial" });
+        });
+
+        // Slide 6: Call to Action
+        let s6 = pptx.addSlide();
+        s6.background = { color: colors.deep };
+        s6.addText("CLOSING THOUGHT", { x: 0.5, y: 0.5, w: 3, h: 0.4, fontSize: 11, color: colors.aqua, bold: true, fontFace: "Arial" });
+        s6.addText("Every drop decides.", { x: 0.5, y: 1, w: 9, h: 1.5, fontSize: 48, color: colors.foam, bold: true, italic: true, fontFace: "Arial" });
+        s6.addText('"When the well is dry, we learn the worth of water." — Benjamin Franklin', { x: 0.7, y: 2.5, w: 6, h: 0.8, fontSize: 16, italic: true, color: "B0C4C0", fontFace: "Arial" });
+        let actions = [
+            { n: "ACT 01", t: "Audit your day", d: "Track every tap you open." },
+            { n: "ACT 02", t: "Fix one leak", d: "A single repair this week." },
+            { n: "ACT 03", t: "Tell someone", d: "Share what you learned." }
+        ];
+        actions.forEach((act, idx) => {
+            let x = 0.5 + (idx * 3.2);
+            s6.addShape(pptx.ShapeType.rect, { x: x, y: 3.8, w: 3, h: 1.3, fill: { color: "152C3A" }, line: { color: colors.aqua, width: 1 } });
+            s6.addText(act.n, { x: x + 0.1, y: 3.9, w: 2.8, h: 0.3, fontSize: 9, color: colors.aqua, bold: true, fontFace: "Arial" });
+            s6.addText(act.t, { x: x + 0.1, y: 4.2, w: 2.8, h: 0.4, fontSize: 16, color: colors.foam, bold: true, fontFace: "Arial" });
+            s6.addText(act.d, { x: x + 0.1, y: 4.6, w: 2.8, h: 0.4, fontSize: 10, color: "B0C4C0", fontFace: "Arial" });
+        });
+        s6.addText("Thank you.", { x: 6, y: 5.2, w: 4, h: 0.5, fontSize: 24, color: colors.aqua, italic: true, bold: true, align: "right", fontFace: "Arial" });
+
+        pptx.writeFile({ fileName: "Water_Conservation.pptx" });
+    </script>
+</body>
+</html>

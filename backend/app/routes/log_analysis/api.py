@@ -3,13 +3,15 @@ API endpoints for log collection and analysis
 """
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 import os
+import uuid
 from dotenv import load_dotenv
 
-from ...database import get_db
+from ...database import SessionLocal, get_db
 from ...log_collector.windows_log_collector import WindowsLogCollector
 from ...log_collector.ioc_extractor import IOCExtractor, IOCPrioritizer
 from ...threat_intel.orchestrator import ThreatIntelOrchestrator
@@ -23,7 +25,13 @@ from ...utils.logger import get_logger
 load_dotenv()
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/log-analysis", tags=["Log Analysis"])
+router = APIRouter(prefix="/log-analysis", tags=["Log Analysis"])
+
+
+def generate_investigation_id(now: Optional[datetime] = None) -> str:
+    """Create a unique investigation ID that remains readable and avoids same-second collisions."""
+    current_time = now or datetime.utcnow()
+    return f"inv_{current_time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
 
 
 # Pydantic models for requests/responses
@@ -187,28 +195,33 @@ async def start_investigation(
     """Start an autonomous SOC investigation"""
     try:
         logger.info(f"Starting investigation: {request.title}")
-        
-        # Create investigation record
-        investigation = Investigation(
-            investigation_id=f"inv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            title=request.title,
-            description=request.description,
-            investigation_type=request.investigation_type,
-            status=InvestigationStatus.PLANNING,
-            log_sources=request.log_sources,
-            time_range_hours=request.time_range_hours,
-            priority_areas=request.priority_areas,
-            ioc_focus=request.ioc_focus
-        )
-        
-        db.add(investigation)
-        db.commit()
-        db.refresh(investigation)
-        
-        # Start investigation in background if auto_start is enabled
+
+        for attempt in range(3):
+            try:
+                investigation = Investigation(
+                    investigation_id=generate_investigation_id(),
+                    title=request.title,
+                    description=request.description,
+                    investigation_type=request.investigation_type,
+                    status=InvestigationStatus.PLANNING,
+                    log_sources=request.log_sources,
+                    time_range_hours=request.time_range_hours,
+                    priority_areas=request.priority_areas,
+                    ioc_focus=request.ioc_focus
+                )
+
+                db.add(investigation)
+                db.commit()
+                db.refresh(investigation)
+                break
+            except IntegrityError:
+                db.rollback()
+                if attempt == 2:
+                    raise
+
         if request.auto_start:
-            background_tasks.add_task(run_investigation, investigation.id, request.dict(), db)
-        
+            background_tasks.add_task(run_investigation, investigation.id, request.dict())
+
         return {
             "status": "success",
             "message": "Investigation created",
@@ -216,7 +229,7 @@ async def start_investigation(
             "id": investigation.id,
             "auto_started": request.auto_start
         }
-        
+
     except Exception as e:
         logger.error(f"Investigation creation failed: {e}")
         db.rollback()
@@ -571,8 +584,10 @@ def save_logs_to_db(log_data: Dict[str, Any], db: Session):
         db.rollback()
 
 
-async def run_investigation(investigation_id: int, params: Dict[str, Any], db: Session):
+async def run_investigation(investigation_id: int, params: Dict[str, Any]):
     """Run investigation in background"""
+    db = SessionLocal()
+    investigation = None
     try:
         investigation = db.query(Investigation).filter(Investigation.id == investigation_id).first()
         if not investigation:
@@ -611,8 +626,11 @@ async def run_investigation(investigation_id: int, params: Dict[str, Any], db: S
         
     except Exception as e:
         logger.error(f"Investigation {investigation_id} failed: {e}")
-        investigation.status = InvestigationStatus.FAILED
-        db.commit()
+        if investigation:
+            investigation.status = InvestigationStatus.FAILED
+            db.commit()
+    finally:
+        db.close()
 
 
 def log_to_dict(log: WindowsLog) -> Dict[str, Any]:

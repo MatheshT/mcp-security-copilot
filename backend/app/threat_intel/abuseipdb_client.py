@@ -234,8 +234,12 @@ class AbuseIPDBClient:
             "generated_at": data.get("meta", {}).get("generatedAt", "")
         }
     
-    def _calculate_risk_level(self, ip_data: Dict[str, Any]) -> str:
+    def _calculate_risk_level(self, ip_data: Any) -> str:
         """Calculate risk level based on AbuseIPDB data"""
+        # Handle case where ip_data might not be a dict
+        if not isinstance(ip_data, dict):
+            return "medium"
+            
         confidence_score = ip_data.get("abuseConfidenceScore", 0)
         total_reports = ip_data.get("totalReports", 0)
         is_whitelisted = ip_data.get("isWhitelisted", False)

@@ -11,7 +11,6 @@ try:
     WINDOWS_AVAILABLE = True
 except ImportError:
     WINDOWS_AVAILABLE = False
-    logger = None
 
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
@@ -22,6 +21,48 @@ from ..utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+class PowerShellLogCollector:
+    """Fallback collector used on non-Windows hosts or when PowerShell log collection is unavailable."""
+    async def collect_logs(self, hours_back: int = 24) -> Dict[str, Any]:
+        return {
+            "source": "powershell",
+            "collected_at": datetime.now().isoformat(),
+            "hours_back": hours_back,
+            "total_logs": 0,
+            "logs": [],
+            "mock_data": True,
+            "platform_available": WINDOWS_AVAILABLE,
+        }
+
+
+class FirewallLogCollector:
+    """Fallback collector for firewall logs on non-Windows or restricted hosts."""
+    async def collect_logs(self, hours_back: int = 24) -> Dict[str, Any]:
+        return {
+            "source": "firewall",
+            "collected_at": datetime.now().isoformat(),
+            "hours_back": hours_back,
+            "total_logs": 0,
+            "logs": [],
+            "mock_data": True,
+            "platform_available": WINDOWS_AVAILABLE,
+        }
+
+
+class IISLogCollector:
+    """Fallback collector for IIS logs when the host is not Windows or IIS is not installed."""
+    async def collect_logs(self, hours_back: int = 24) -> Dict[str, Any]:
+        return {
+            "source": "iis",
+            "collected_at": datetime.now().isoformat(),
+            "hours_back": hours_back,
+            "total_logs": 0,
+            "logs": [],
+            "mock_data": True,
+            "platform_available": WINDOWS_AVAILABLE,
+        }
+
+
 class WindowsLogCollector:
     """Collects various Windows log sources"""
     
@@ -29,7 +70,10 @@ class WindowsLogCollector:
         self.log_sources = {
             'windows_event': WindowsEventLogCollector(),
             'sysmon': SysmonLogCollector(),
-            'defender': DefenderLogCollector()
+            'defender': DefenderLogCollector(),
+            'powershell': PowerShellLogCollector(),
+            'firewall': FirewallLogCollector(),
+            'iis': IISLogCollector()
         }
     
     async def collect_all_logs(self, hours_back: int = 24) -> Dict[str, Any]:

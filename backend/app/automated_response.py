@@ -7,6 +7,7 @@ for rapid incident containment and remediation.
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 import uuid
+import random
 
 
 class AutomatedResponseOrchestrator:
@@ -164,7 +165,7 @@ class AutomatedResponseOrchestrator:
         asset_factor = min(asset_count / 20, 0.3)
         sensitivity_factor = sensitivity_scores.get(data_sensitivity, 0.5) * 0.2
         
-        return round(base_score + asset_factor + sensitivity_factor, 2)
+        return round(min(1.0, base_score + asset_factor + sensitivity_factor), 2)
     
     def _determine_urgency(self, severity: str, scope: str) -> str:
         """Determine urgency level"""

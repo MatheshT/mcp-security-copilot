@@ -1,9 +1,16 @@
-from fastapi import APIRouter, HTTPException, Query
+import asyncio
+import re
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
 from ..mcp.wazuh_server import WazuhServer
-from pydantic import BaseModel
+from ..auth.dependencies import get_current_user
+from ..auth.models import User
+from ..database import SessionLocal
+from ..log_collector.models import Alert
+from ..wazuh_automation import get_wazuh_automation_worker
 from pathlib import Path
 import os
 import requests
@@ -34,34 +41,37 @@ async def get_wazuh_alerts(time_range: str = "24h"):
         result = wazuh_server.get_alerts()
         if result.status == "success":
             alerts = result.data.get("alerts", [])
-            
-            # Calculate statistics
-            severity_distribution = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
-            for alert in alerts:
-                severity = str(alert.get("severity", "Unknown")).title()
-                if severity in severity_distribution:
-                    severity_distribution[severity] += 1
-                else:
-                    severity_distribution[severity] = severity_distribution.get(severity, 0) + 1
-            
             return {
+                "status": "success",
+                "source": "wazuh",
+                "message": "No live Wazuh alerts were available" if not alerts else "Real Wazuh alerts",
                 "alerts": alerts,
                 "total_alerts": len(alerts),
-                "severity_distribution": severity_distribution,
                 "time_range": time_range
             }
-        else:
-            logger.error(f"Failed to get Wazuh alerts: {result.details}")
-            raise HTTPException(status_code=500, detail=result.details)
-    except Exception as e:
-        logger.error(f"Error fetching Wazuh alerts: {e}")
-        # Return mock data for demonstration
+
+        logger.warning("Wazuh returned a non-success result: %s", result.details)
         return {
+            "status": "success",
+            "source": "wazuh",
+            "message": "Wazuh is unavailable; returning no live alerts",
             "alerts": [],
             "total_alerts": 0,
-            "severity_distribution": {"Critical": 0, "High": 0, "Medium": 0, "Low": 0},
             "time_range": time_range,
-            "error": str(e)
+            "details": result.details,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching Wazuh alerts: {e}")
+        return {
+            "status": "success",
+            "source": "wazuh",
+            "message": "Wazuh is unavailable; returning no live alerts",
+            "alerts": [],
+            "total_alerts": 0,
+            "time_range": time_range,
+            "details": str(e),
         }
 
 
@@ -69,23 +79,41 @@ async def get_wazuh_alerts(time_range: str = "24h"):
 async def get_wazuh_agents():
     """Get Wazuh agents status"""
     try:
-        # Since get_endpoint_info requires an endpoint_id, we'll return mock data for now
-        # In a real implementation, you would have a method to list all agents
+        result = wazuh_server.get_agents()
+        if result.status == "success":
+            agents = result.data.get("agents", [])
+            return {
+                "status": "success",
+                "source": "wazuh",
+                "message": "No live Wazuh agents were available" if not agents else "Real Wazuh agents",
+                "agents": agents,
+                "total_agents": len(agents),
+                "active_agents": len([a for a in agents if str(a.get("status", "")).lower() == "active"]),
+                "connected_agents": len(agents),
+            }
+
+        logger.warning("Wazuh returned a non-success agent result: %s", result.details)
         return {
+            "status": "success",
+            "source": "wazuh",
+            "message": "Wazuh is unavailable; returning no live agents",
             "agents": [],
             "total_agents": 0,
             "active_agents": 0,
             "connected_agents": 0,
-            "error": "Wazuh agent listing not implemented in MCP server"
+            "details": result.details,
         }
     except Exception as e:
         logger.error(f"Error fetching Wazuh agents: {e}")
         return {
+            "status": "success",
+            "source": "wazuh",
+            "message": "Wazuh is unavailable; returning no live agents",
             "agents": [],
             "total_agents": 0,
             "active_agents": 0,
             "connected_agents": 0,
-            "error": str(e)
+            "details": str(e),
         }
 
 
@@ -98,47 +126,98 @@ async def get_alerts(
 ):
     """Get security alerts with optional filters"""
     try:
-        # Get alerts from Wazuh
-        wazuh_result = wazuh_server.get_alerts()
-        
-        if wazuh_result.status == "success":
-            alerts = wazuh_result.data.get("alerts", [])
-            
-            # Apply filters
-            if severity:
-                alerts = [a for a in alerts if str(a.get("severity", "")).lower() == severity.lower()]
-            if status:
-                alerts = [a for a in alerts if str(a.get("status", "")).lower() == status.lower()]
-            if source:
-                alerts = [a for a in alerts if str(a.get("source", "")).lower() == source.lower()]
-            
-            # Limit results
-            alerts = alerts[:limit]
-            
-            return {
-                "alerts": alerts,
-                "total_count": len(alerts),
-                "filters": {
-                    "severity": severity,
-                    "status": status,
-                    "source": source,
-                    "limit": limit
-                }
-            }
-        else:
-            logger.error(f"Failed to get alerts: {wazuh_result.details}")
-            raise HTTPException(status_code=500, detail=wazuh_result.details)
-    except Exception as e:
-        logger.error(f"Error fetching alerts: {e}")
+        combined_alerts = []
+
+        # 1. Fetch from live Wazuh if available
+        try:
+            wazuh_result = wazuh_server.get_alerts()
+            if wazuh_result.status == "success":
+                wazuh_alerts = wazuh_result.data.get("alerts", [])
+                for a in wazuh_alerts:
+                    combined_alerts.append({
+                        "id": str(a.get("id", a.get("alert_id", uuid.uuid4().hex[:8]))),
+                        "title": a.get("rule", {}).get("description", a.get("name", "Wazuh Security Event")),
+                        "description": a.get("full_log", a.get("rule", {}).get("description", "Security alert")),
+                        "severity": str(a.get("severity", "medium")).lower(),
+                        "source": "Wazuh",
+                        "status": str(a.get("status", "active")),
+                        "timestamp": a.get("timestamp", datetime.utcnow().isoformat()),
+                        "rule_id": a.get("rule", {}).get("id", "N/A"),
+                        "agent_name": a.get("agent", {}).get("name", "wazuh-agent")
+                    })
+        except Exception as we:
+            logger.debug(f"Wazuh fetch skipped: {we}")
+
+        # 2. Fetch from SQLite Database
+        db = SessionLocal()
+        try:
+            db_alerts = db.query(Alert).order_by(Alert.first_seen.desc()).limit(100).all()
+            for da in db_alerts:
+                sev_val = da.severity.value if hasattr(da.severity, "value") else str(da.severity)
+                combined_alerts.append({
+                    "id": da.alert_id,
+                    "title": da.title,
+                    "description": da.description,
+                    "severity": sev_val.lower(),
+                    "source": da.source or "System Log Collector",
+                    "status": da.status or "active",
+                    "timestamp": da.first_seen.isoformat() if da.first_seen else datetime.utcnow().isoformat(),
+                    "rule_id": da.detection_rule or "RULE-SYS-01",
+                    "agent_name": da.affected_hosts[0] if da.affected_hosts else "local-host"
+                })
+        except Exception as dbe:
+            logger.debug(f"DB alerts fetch error: {dbe}")
+        finally:
+            db.close()
+
+        # 3. If still empty, try direct alerts log reader
+        if not combined_alerts:
+            try:
+                from .wazuh import _get_alerts_from_log
+                raw_alerts = _get_alerts_from_log(limit=limit)
+                for a in raw_alerts:
+                    combined_alerts.append({
+                        "id": str(a.get("id")),
+                        "title": a.get("rule", {}).get("description", "Wazuh Security Event"),
+                        "description": a.get("full_log", ""),
+                        "severity": str(a.get("severity", "medium")).lower(),
+                        "source": "Wazuh SIEM",
+                        "status": "open",
+                        "timestamp": a.get("timestamp", datetime.utcnow().isoformat()),
+                        "rule_id": str(a.get("rule", {}).get("id", "N/A")),
+                        "agent_name": a.get("agent", {}).get("name", "Windows11")
+                    })
+            except Exception as e:
+                logger.debug(f"Direct alerts log fallback skipped: {e}")
+
+        # Apply filters
+        filtered_alerts = combined_alerts
+        if severity:
+            filtered_alerts = [a for a in filtered_alerts if str(a.get("severity", "")).lower() == severity.lower()]
+        if status:
+            filtered_alerts = [a for a in filtered_alerts if str(a.get("status", "")).lower() == status.lower()]
+        if source:
+            filtered_alerts = [a for a in filtered_alerts if source.lower() in str(a.get("source", "")).lower()]
+
+        filtered_alerts = filtered_alerts[:limit]
+
         return {
-            "alerts": [],
-            "total_count": 0,
+            "status": "success",
+            "alerts": filtered_alerts,
+            "total_count": len(filtered_alerts),
             "filters": {
                 "severity": severity,
                 "status": status,
                 "source": source,
                 "limit": limit
-            },
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching alerts: {e}")
+        return {
+            "status": "error",
+            "alerts": [],
+            "total_count": 0,
             "error": str(e)
         }
 
@@ -306,6 +385,55 @@ async def restart_wazuh_agent(agent_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/wazuh/automation/status")
+async def get_wazuh_automation_status(current_user: User = Depends(get_current_user)):
+    worker = get_wazuh_automation_worker()
+    return {
+        "mode": "dry_run",
+        "running": worker.running,
+        "interval_seconds": worker.interval_seconds,
+        "max_alerts_per_run": worker.max_alerts_per_run,
+        "last_run": worker.last_run,
+        "last_status": worker.last_result.get("status"),
+        "last_processed": worker.last_result.get("processed", 0),
+    }
+
+
+@router.post("/wazuh/automation/run")
+async def run_wazuh_automation_once(current_user: User = Depends(get_current_user)):
+    worker = get_wazuh_automation_worker()
+    return await asyncio.to_thread(worker.run_once)
+
+
+@router.get("/wazuh/automation/events")
+async def get_wazuh_automation_events(
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+):
+    with SessionLocal() as db:
+        records = (
+            db.query(Alert)
+            .filter(Alert.alert_type == "wazuh_failed_authentication")
+            .order_by(Alert.updated_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return {
+            "mode": "dry_run",
+            "events": [
+                {
+                    "alert_id": record.alert_id,
+                    "title": record.title,
+                    "severity": getattr(record.severity, "value", record.severity),
+                    "status": record.status,
+                    "created_at": record.created_at.isoformat() if record.created_at else None,
+                    "metadata": record.alert_metadata or {},
+                }
+                for record in records
+            ],
+        }
+
+
 @router.get("/statistics")
 async def get_detection_statistics():
     """Get overall detection statistics"""
@@ -345,3 +473,55 @@ async def get_detection_statistics():
     except Exception as e:
         logger.error(f"Error fetching detection statistics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/threat-intel/lookup")
+async def threat_intel_lookup(indicator: str = Query(..., description="IP, domain, hash, or URL")):
+    """Live threat intelligence lookup using VirusTotal, AbuseIPDB, and MITRE ATT&CK"""
+    from ..threat_intel.virustotal_client import VirusTotalClient
+    from ..threat_intel.abuseipdb_client import AbuseIPDBClient
+    from ..threat_intel.mitre_attack_client import MITREAttackClient
+    
+    vt_key = os.getenv("VIRUSTOTAL_API_KEY")
+    abuse_key = os.getenv("ABUSEIPDB_API_KEY")
+    
+    result = {
+        "indicator": indicator,
+        "virustotal": None,
+        "abuseipdb": None,
+        "mitre": None,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    # 1. VirusTotal
+    if vt_key:
+        try:
+            vt = VirusTotalClient(vt_key)
+            if re.match(r'^[a-fA-F0-9]{32,64}$', indicator):
+                result["virustotal"] = await vt.analyze_file(indicator)
+            elif re.match(r'^(http|https)://', indicator):
+                result["virustotal"] = await vt.analyze_url(indicator)
+            elif re.match(r'^\d{1,3}(\.\d{1,3}){3}$', indicator):
+                result["virustotal"] = await vt.analyze_ip(indicator)
+            else:
+                result["virustotal"] = await vt.analyze_domain(indicator)
+        except Exception as e:
+            result["virustotal"] = {"error": str(e)}
+            
+    # 2. AbuseIPDB
+    if abuse_key and re.match(r'^\d{1,3}(\.\d{1,3}){3}$', indicator):
+        try:
+            ab = AbuseIPDBClient(abuse_key)
+            result["abuseipdb"] = await ab.check_ip(indicator)
+        except Exception as e:
+            result["abuseipdb"] = {"error": str(e)}
+
+    # 3. MITRE Techniques
+    try:
+        mitre = MITREAttackClient()
+        techniques = await mitre.get_techniques()
+        result["mitre"] = techniques
+    except Exception as e:
+        result["mitre"] = {"error": str(e)}
+
+    return result

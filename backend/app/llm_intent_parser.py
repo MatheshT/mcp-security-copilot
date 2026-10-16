@@ -121,6 +121,7 @@ class LLMIntentParser:
             IntentType.INCIDENT_INVESTIGATION.value: [
                 r'investigate\s+alert\s+#?\d+',
                 r'analyze\s+alert\s+#?\d+',
+                r'\b(?:start|begin|run)\s+(?:an?\s+)?(?:security\s+)?invest(?:i?gation)\b',
                 r'triage\s+alert',
                 r'incident\s+investigation',
                 r'security\s+incident',
@@ -190,7 +191,20 @@ class LLMIntentParser:
                 r'security\s+(?:health|assessment)',
                 r'risk\s+(?:assessment|posture)',
                 r'security\s+metrics',
-                r'organizational\s+security'
+                r'organizational\s+security',
+                r'how\s+many\s+(?:wazuh\s+)?agents?',
+                r'agents?\s+(?:count|number|total)',
+                r'connected\s+agents?',
+                r'wazuh\s+agents?\s+(?:count|number|status)',
+                r'wazuh\s+(?:agent|data|status|information)',
+                r'(?:(?:current|active|total)\s+)?(?:wazuh\s+)?agents?\s+(?:connected|status|count)',
+                r'(?:(?:what|tell|show|get|give)\s+me\s+)?(?:wazuh\s+)?agents?',
+                r'wazuh\s+(?:alerts|events|logs|rules|vulnerabilities)',
+                r'(?:(?:show|get|list|display)\s+)?(?:wazuh\s+)?(?:alerts|events|logs)',
+                r'wazuh\s+(?:dashboard|overview|summary)',
+                r'(?:check|monitor|status)\s+(?:wazuh\s+)?(?:agents|endpoints)',
+                r'wazuh\s+(?:endpoint|host|server)\s+(?:information|details|status)',
+                r'(?:(?:active|disconnected|offline|online)\s+)?(?:wazuh\s+)?agents?'
             ],
             IntentType.TOOL_EXPLANATION.value: [
                 r'what\s+is\s+(?:virustotal|wazuh|misp|shodan|mcp)',
@@ -224,6 +238,7 @@ class LLMIntentParser:
                 r'incident\s+(?:handling|management)'
             ],
             IntentType.LOG_ANALYSIS.value: [
+                r'\b(?:collect|coolect|gather|retrieve|fetch|pull)\b.*\blogs?\b',
                 r'log\s+(?:analysis|investigation)',
                 r'analyze\s+logs?',
                 r'investigate\s+logs?',
@@ -247,6 +262,14 @@ class LLMIntentParser:
                 r'meaning',
                 r'(?:(?:can|could|would|should)\s+you)\s+(?:explain|tell|describe)',
                 r'(?:(?:help|info|information)\s+about)\s+\w+'
+            ],
+            # Add negative patterns - if query contains Wazuh, prioritize it over general question
+            IntentType.SECURITY_POSTURE.value: [
+                r'(?:wazuh|virustotal|misp|shodan|abuseipdb|alienvault)\s+(?:agents?|alerts?|data|status|count|number|total)',
+                r'how\s+many\s+(?:wazuh\s+)?agents?',
+                r'agents?\s+(?:count|number|total)',
+                r'connected\s+agents?',
+                r'(?:current|active|total)\s+(?:wazuh\s+)?agents?'
             ],
             IntentType.CONVERSATIONAL.value: [
                 r'^(hi|hello|hey|greetings?)',
@@ -275,11 +298,12 @@ class LLMIntentParser:
             'port': r'\b(?:port|:)\s*\d{1,5}\b',
             'mac_address': r'\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\b',
             'hostname': r'\b[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\b',
-            'file_path': r'\b(?:[a-zA-Z]:)?[\\/][\w-\\./]+\b',
+            'file_path': r'\b(?:[a-zA-Z]:)?[\\/][\w\-\\./]+\b',
             'user_account': r'\b(?:[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+|\\[a-zA-Z0-9._-]+)\b',
             'process_name': r'\b[\w-]+\.exe\b|\b[\w-]+\.dll\b|\b[\w-]+\.bin\b',
             'registry_key': r'\b[HKEY_][A-Z_]+\\[^\s]+\b',
-            'mitre_id': r'\bT\d{4}(?:\.\d{3})?\b'
+            'mitre_id': r'\bT\d{4}(?:\.\d{3})?\b',
+            'security_tool': r'\b(?:wazuh|virustotal|misp|shodan|abuseipdb|alienvault)\b'
         }
     
     def _initialize_tool_mapping(self) -> Dict[str, List[str]]:
@@ -301,7 +325,7 @@ class LLMIntentParser:
             IntentType.TOOL_EXPLANATION.value: [],
             IntentType.CONVERSATIONAL.value: [],
             IntentType.COMPLIANCE_CHECK.value: ['Wazuh'],
-            IntentType.SECURITY_POSTURE.value: ['Wazuh', 'VirusTotal']
+            IntentType.SECURITY_POSTURE.value: ['Wazuh']
         }
     
     def _initialize_query_keywords(self) -> Dict[str, List[str]]:
@@ -351,6 +375,13 @@ class LLMIntentParser:
         
         # Step 2: Determine intent
         intent, intent_confidence = self._classify_intent(query_lower, entities)
+        
+        # Step 2.5: Override for Wazuh-specific queries
+        if any(k in query_lower for k in ['wazuh', 'agent', 'connected', 'how many agents']):
+            # If query is about Wazuh agents, override general question classification
+            if intent == IntentType.GENERAL_QUESTION.value:
+                intent = IntentType.SECURITY_POSTURE.value
+                intent_confidence = ConfidenceLevel.HIGH
         
         # Step 3: Determine query type
         query_type = self._classify_query_type(query_lower, entities, intent)

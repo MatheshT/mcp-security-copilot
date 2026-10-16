@@ -1,0 +1,22 @@
+ 🌟 1. Guide-ai Impress Panna Add Panna Puthu Features
+
+   Feature                                                | Athoda Purpose (Guide-kku Enna Kaattalam?)
+  --------------------------------------------------------|-----------------------------------------------------------
+   ⚡ Cyber Range & Attack Simulator (CyberRange.jsx)     | Real-time-il live malware attacks (LockBit 3.0
+                                                          | Ransomware, Active Directory Kerberoasting, Web Shells,
+                                                          | APT29) inject panni, AI epdi athai real-time-il detect
+                                                          | pannuthunu live demo kaattalam.
+   🛡️ SOAR & Active Defense Engine (SOARPanel.jsx)        | Threat detect aana udaney host-ai network-ilirunthu
+                                                          | isolate pannuvathu, malicious C2 IP-ai firewall-il block
+                                                          | pannuvathu, process terminate pannuvathu ena 1-Click-il
+                                                          | Automated Remediation & Rollback seiyalaam.
+   🗺️ MITRE ATT&CK Enterprise Matrix (MitreMatrix.jsx)    | International cyber security standard-aana MITRE ATT&CK
+                                                          | 12 tactics & techniques visual heatmap. Ovvoru technique-
+                                                          | kum Sigma detection rule & defensive recommendations pop-
+                                                          | up aagum.
+   👤 AI Threat Actor Profiling (threat_actor_persona.py) | Attack nadakkum bothu athoda signature & technique vechu
+                                                          | adversary-ai attribute pannum (e.g., APT29, FIN7,
+                                                          | LockBit).
+   🚨 Enhanced Multi-Source Alerts (detection.py)         | Wazuh EDR, Windows Sysmon, Defender, matrum Cyber Range
+                                                          | alerts ellathaiyum merge panni display pannum.
+  ──────

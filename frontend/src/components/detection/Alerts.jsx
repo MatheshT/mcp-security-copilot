@@ -1,305 +1,355 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { getWazuhAlerts, updateAlertStatus } from '../../services/api';
+import {
+  MODERN_COLORS,
+  SPACING,
+  BORDER_RADIUS,
+  TYPOGRAPHY,
+} from '../../theme/modernTheme';
+
+const SEVERITY_CONFIG = {
+  Critical: { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5', badge: '#dc2626' },
+  High: { bg: 'rgba(249, 115, 22, 0.15)', border: '#f97316', text: '#fdba74', badge: '#ea580c' },
+  Medium: { bg: 'rgba(234, 179, 8, 0.15)', border: '#eab308', text: '#fde047', badge: '#ca8a04' },
+  Low: { bg: 'rgba(16, 185, 129, 0.15)', border: '#10b981', text: '#6ee7b7', badge: '#059669' },
+  Info: { bg: 'rgba(6, 182, 212, 0.15)', border: '#06b6d4', text: '#67e8f9', badge: '#0891b2' },
+};
 
 const Alerts = () => {
   const [alerts, setAlerts] = useState([]);
-  const [filteredAlerts, setFilteredAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedAlert, setSelectedAlert] = useState(null);
-  const [filters, setFilters] = useState({
-    severity: 'all',
-    status: 'all',
-    source: 'all',
-    search: ''
-  });
+  const [copiedLog, setCopiedLog] = useState(false);
+  const [filterSeverity, setFilterSeverity] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusMap, setStatusMap] = useState({});
+  const [notesMap, setNotesMap] = useState({});
+  const [newNote, setNewNote] = useState('');
 
-  useEffect(() => {
-    loadAlerts();
+  const loadAlerts = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+
+      const data = await getWazuhAlerts({ limit: 200 });
+
+      if (data && Array.isArray(data.alerts)) {
+        setAlerts(data.alerts);
+      } else {
+        setAlerts([]);
+      }
+    } catch (err) {
+      console.error('Error fetching Wazuh alerts:', err);
+      setError(err.message || 'Failed to communicate with Wazuh node');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
-    applyFilters();
-  }, [alerts, filters]);
+    loadAlerts();
+    // Auto refresh every 20 seconds
+    const interval = setInterval(() => loadAlerts(true), 20000);
+    return () => clearInterval(interval);
+  }, [loadAlerts]);
 
-  const loadAlerts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Statistics calculation
+  const stats = useMemo(() => {
+    const total = alerts.length;
+    const critical = alerts.filter(a => a.severity === 'Critical').length;
+    const high = alerts.filter(a => a.severity === 'High').length;
+    const medium = alerts.filter(a => a.severity === 'Medium').length;
+    const low = alerts.filter(a => a.severity === 'Low').length;
+    return { total, critical, high, medium, low };
+  }, [alerts]);
 
-      const alertsData = await api.getAlerts();
-      if (alertsData) {
-        setAlerts(alertsData.alerts || []);
+  // Filtered alert list
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter(alert => {
+      // Severity filter
+      if (filterSeverity !== 'all' && alert.severity?.toLowerCase() !== filterSeverity.toLowerCase()) {
+        return false;
       }
-    } catch (err) {
-      console.error('Error loading alerts:', err);
-      setError('Failed to load alerts. Using mock data for demonstration.');
-      loadMockAlerts();
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const loadMockAlerts = () => {
-    const mockAlerts = [
-      {
-        id: 1,
-        title: 'SSH Brute Force Attack Detected',
-        severity: 'Critical',
-        status: 'Open',
-        source: 'Wazuh',
-        agent: 'web-server-01',
-        timestamp: '2024-01-15T10:30:00Z',
-        description: 'Multiple failed SSH login attempts detected from IP 192.168.1.100',
-        rule: 'SSH Brute Force',
-        level: 12,
-        iocs: ['192.168.1.100', 'root', 'ssh'],
-        mitigation: 'Block source IP and implement rate limiting'
-      },
-      {
-        id: 2,
-        title: 'Malware Signature Detected',
-        severity: 'High',
-        status: 'Open',
-        source: 'Windows Defender',
-        agent: 'workstation-15',
-        timestamp: '2024-01-15T10:15:00Z',
-        description: 'Known malware signature detected in file: C:\\Users\\temp\\suspicious.exe',
-        rule: 'Malware Detection',
-        level: 10,
-        iocs: ['C:\\Users\\temp\\suspicious.exe', 'Trojan.Win32.Generic'],
-        mitigation: 'Isolate endpoint and perform full system scan'
-      },
-      {
-        id: 3,
-        title: 'Suspicious Process Execution',
-        severity: 'Medium',
-        status: 'Investigating',
-        source: 'Sysmon',
-        agent: 'db-server-02',
-        timestamp: '2024-01-15T10:00:00Z',
-        description: 'Unusual process execution pattern detected: powershell.exe with encoded command',
-        rule: 'Suspicious Process',
-        level: 8,
-        iocs: ['powershell.exe', 'encoded-command'],
-        mitigation: 'Investigate process chain and user activity'
-      },
-      {
-        id: 4,
-        title: 'System File Modification',
-        severity: 'Low',
-        status: 'Closed',
-        source: 'Windows Event Log',
-        agent: 'file-server-01',
-        timestamp: '2024-01-15T09:45:00Z',
-        description: 'System file modification detected in C:\\Windows\\System32\\drivers',
-        rule: 'File Modification',
-        level: 6,
-        iocs: ['C:\\Windows\\System32\\drivers'],
-        mitigation: 'Verify file integrity and check for unauthorized changes'
-      },
-      {
-        id: 5,
-        title: 'Network Anomaly Detected',
-        severity: 'Medium',
-        status: 'Open',
-        source: 'Wazuh',
-        agent: 'web-server-02',
-        timestamp: '2024-01-15T09:30:00Z',
-        description: 'Unusual network traffic pattern detected: large data transfer to external IP',
-        rule: 'Network Anomaly',
-        level: 7,
-        iocs: ['203.0.113.45', 'large-transfer'],
-        mitigation: 'Investigate data transfer and verify destination'
-      },
-      {
-        id: 6,
-        title: 'Privilege Escalation Attempt',
-        severity: 'High',
-        status: 'Investigating',
-        source: 'Windows Event Log',
-        agent: 'workstation-08',
-        timestamp: '2024-01-15T09:15:00Z',
-        description: 'Privilege escalation attempt detected via exploit of vulnerable service',
-        rule: 'Privilege Escalation',
-        level: 11,
-        iocs: ['CVE-2023-1234', 'administrator'],
-        mitigation: 'Isolate system and patch vulnerability'
-      },
-      {
-        id: 7,
-        title: 'Multiple Failed Logins',
-        severity: 'Medium',
-        status: 'Open',
-        source: 'Windows Event Log',
-        agent: 'dc-01',
-        timestamp: '2024-01-15T09:00:00Z',
-        description: 'Multiple failed login attempts detected for user account',
-        rule: 'Failed Logins',
-        level: 8,
-        iocs: ['user1@domain.com', '46 failed attempts'],
-        mitigation: 'Lock account and investigate source'
-      },
-      {
-        id: 8,
-        title: 'DNS Tunneling Detected',
-        severity: 'High',
-        status: 'Open',
-        source: 'Wazuh',
-        agent: 'workstation-12',
-        timestamp: '2024-01-15T08:45:00Z',
-        description: 'DNS tunneling activity detected to suspicious domain',
-        rule: 'DNS Tunneling',
-        level: 10,
-        iocs: ['suspicious-domain.com', 'DNS tunneling'],
-        mitigation: 'Block domain and investigate compromised host'
+      // Status filter
+      const currentStatus = statusMap[alert.id] || 'Open';
+      if (filterStatus !== 'all' && currentStatus.toLowerCase() !== filterStatus.toLowerCase()) {
+        return false;
       }
-    ];
 
-    setAlerts(mockAlerts);
-  };
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const ruleDesc = (alert.rule?.description || '').toLowerCase();
+        const ruleId = String(alert.rule?.id || '');
+        const agentName = (alert.agent?.name || '').toLowerCase();
+        const fullLog = (alert.full_log || '').toLowerCase();
+        const id = String(alert.id || '');
+        return ruleDesc.includes(q) || ruleId.includes(q) || agentName.includes(q) || fullLog.includes(q) || id.includes(q);
+      }
 
-  const applyFilters = () => {
-    let filtered = [...alerts];
+      return true;
+    });
+  }, [alerts, filterSeverity, filterStatus, searchQuery, statusMap]);
 
-    if (filters.severity !== 'all') {
-      filtered = filtered.filter(alert => 
-        alert.severity.toLowerCase() === filters.severity.toLowerCase()
-      );
-    }
-
-    if (filters.status !== 'all') {
-      filtered = filtered.filter(alert => 
-        alert.status.toLowerCase() === filters.status.toLowerCase()
-      );
-    }
-
-    if (filters.source !== 'all') {
-      filtered = filtered.filter(alert => 
-        alert.source.toLowerCase() === filters.source.toLowerCase()
-      );
-    }
-
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(alert => 
-        alert.title.toLowerCase().includes(searchLower) ||
-        alert.description.toLowerCase().includes(searchLower) ||
-        alert.agent.toLowerCase().includes(searchLower)
-      );
-    }
-
-    setFilteredAlerts(filtered);
-  };
-
-  const getSeverityColor = (severity) => {
-    switch (severity?.toLowerCase()) {
-      case 'critical': return '#dc2626';
-      case 'high': return '#ea580c';
-      case 'medium': return '#ca8a04';
-      case 'low': return '#16a34a';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'open': return '#dc2626';
-      case 'investigating': return '#ca8a04';
-      case 'closed': return '#16a34a';
-      default: return '#6b7280';
-    }
-  };
-
-  const handleAlertClick = (alert) => {
-    setSelectedAlert(alert);
-  };
-
-  const closeAlertDetails = () => {
-    setSelectedAlert(null);
-  };
-
-  const updateAlertStatus = async (alertId, newStatus) => {
+  const handleStatusChange = (alertId, newStatus) => {
+    setStatusMap(prev => ({ ...prev, [alertId]: newStatus }));
     try {
-      await api.updateAlertStatus(alertId, newStatus);
-      setAlerts(alerts.map(alert => 
-        alert.id === alertId ? { ...alert, status: newStatus } : alert
-      ));
-    } catch (err) {
-      console.error('Error updating alert status:', err);
-      // Mock update for demo
-      setAlerts(alerts.map(alert => 
-        alert.id === alertId ? { ...alert, status: newStatus } : alert
-      ));
+      updateAlertStatus(alertId, newStatus);
+    } catch (e) {
+      console.warn('Backend status sync:', e);
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <div style={{ fontSize: '18px', color: '#666' }}>Loading alerts...</div>
-      </div>
-    );
-  }
+  const handleAddNote = (alertId) => {
+    if (!newNote.trim()) return;
+    setNotesMap(prev => ({
+      ...prev,
+      [alertId]: [...(prev[alertId] || []), { text: newNote.trim(), time: new Date().toLocaleTimeString() }]
+    }));
+    setNewNote('');
+  };
+
+  const handleCopyLog = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedLog(true);
+    setTimeout(() => setCopiedLog(false), 2000);
+  };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ margin: 0, color: '#1e3a5f' }}>🚨 Security Alerts</h2>
-        <p style={{ color: '#6b7280', margin: '8px 0 0 0' }}>
-          Total: {filteredAlerts.length} alerts
-        </p>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: SPACING.xl,
+      background: '#060910',
+      minHeight: '100%',
+      fontFamily: TYPOGRAPHY.fontFamily,
+      color: '#f8fafc',
+    }}>
+      {/* ─── Header & Telemetry Status ─── */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(15,23,42,0.85), rgba(12,17,32,0.95))',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: BORDER_RADIUS.xl,
+        padding: '24px 28px',
+        backdropFilter: 'blur(16px)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: 320,
+          height: 120,
+          background: 'radial-gradient(ellipse at top right, rgba(99,102,241,0.12), transparent 70%)',
+          pointerEvents: 'none'
+        }} />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: BORDER_RADIUS.lg,
+                background: 'linear-gradient(135deg, #ef4444, #f97316)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                boxShadow: '0 4px 20px rgba(239,68,68,0.4)'
+              }}>
+                🚨
+              </div>
+              <div>
+                <h1 style={{
+                  margin: 0,
+                  fontSize: '1.5rem',
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  background: 'linear-gradient(135deg, #ffffff, #cbd5e1)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  Live Security Alerts & Incident Stream
+                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: '#10b981',
+                      boxShadow: '0 0 10px #10b981',
+                      display: 'inline-block'
+                    }} />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#10b981', letterSpacing: '0.05em' }}>
+                      WAZUH SIEM TELEMETRY LIVE
+                    </span>
+                  </div>
+                  <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    Node: <code style={{ color: '#67e8f9' }}>192.168.56.101</code>
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    Source: <code style={{ color: '#a5b4fc' }}>/var/ossec/logs/alerts/alerts.log</code>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => loadAlerts(true)}
+              disabled={refreshing}
+              style={{
+                background: 'rgba(30,41,59,0.7)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#e2e8f0',
+                padding: '8px 16px',
+                borderRadius: BORDER_RADIUS.md,
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: refreshing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                transition: 'all 150ms ease'
+              }}
+              onMouseOver={e => e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)'}
+              onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+            >
+              <span style={{ display: 'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
+              {refreshing ? 'Polling...' : 'Refresh'}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <div style={{ 
-          padding: '12px', 
-          backgroundColor: '#fef3c7', 
-          border: '1px solid #f59e0b', 
-          borderRadius: '4px', 
-          marginBottom: '20px',
-          color: '#92400e'
-        }}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* Filters */}
-      <div style={{ 
-        backgroundColor: 'white', 
-        padding: '16px', 
-        borderRadius: '8px', 
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)', 
-        marginBottom: '20px',
+      {/* ─── Metric Counter Badges ─── */}
+      <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: 16
       }}>
-        <div>
-          <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-            Severity
-          </label>
-          <select 
-            value={filters.severity}
-            onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+        {[
+          { label: 'Total Events', count: stats.total, color: '#6366f1', icon: '📊', bg: 'rgba(99,102,241,0.1)' },
+          { label: 'Critical Severity', count: stats.critical, color: '#ef4444', icon: '🔴', bg: 'rgba(239,68,68,0.1)' },
+          { label: 'High Severity', count: stats.high, color: '#f97316', icon: '🟠', bg: 'rgba(249,115,22,0.1)' },
+          { label: 'Medium Severity', count: stats.medium, color: '#eab308', icon: '🟡', bg: 'rgba(234,179,8,0.1)' },
+          { label: 'Low Severity', count: stats.low, color: '#10b981', icon: '🟢', bg: 'rgba(16,185,129,0.1)' },
+        ].map(card => (
+          <div
+            key={card.label}
+            style={{
+              background: 'rgba(15,23,42,0.65)',
+              border: `1px solid rgba(255,255,255,0.06)`,
+              borderLeft: `3px solid ${card.color}`,
+              borderRadius: BORDER_RADIUS.lg,
+              padding: '16px 20px',
+              backdropFilter: 'blur(12px)',
+              transition: 'transform 150ms ease, box-shadow 150ms ease'
+            }}
           >
-            <option value="all">All Severities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                {card.label}
+              </span>
+              <span style={{ fontSize: '1rem' }}>{card.icon}</span>
+            </div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: card.color, marginTop: 4 }}>
+              {card.count}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ─── Filter & Search Bar ─── */}
+      <div style={{
+        background: 'rgba(15,23,42,0.7)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: BORDER_RADIUS.xl,
+        padding: '16px 20px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 16,
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        {/* Severity Tabs */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {['all', 'critical', 'high', 'medium', 'low'].map(sev => {
+            const isActive = filterSeverity === sev;
+            return (
+              <button
+                key={sev}
+                onClick={() => setFilterSeverity(sev)}
+                style={{
+                  background: isActive ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(30,41,59,0.5)',
+                  border: `1px solid ${isActive ? '#818cf8' : 'rgba(255,255,255,0.08)'}`,
+                  color: isActive ? '#fff' : '#94a3b8',
+                  padding: '6px 14px',
+                  borderRadius: BORDER_RADIUS.md,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                  transition: 'all 120ms ease'
+                }}
+              >
+                {sev}
+              </button>
+            );
+          })}
         </div>
 
-        <div>
-          <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-            Status
-          </label>
-          <select 
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+        {/* Search Input & Status Dropdown */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, maxWidth: 450, minWidth: 260 }}>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>🔍</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by rule, agent, alert ID or event text..."
+              style={{
+                width: '100%',
+                background: 'rgba(10,14,26,0.8)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: BORDER_RADIUS.md,
+                padding: '8px 12px 8px 34px',
+                color: '#f8fafc',
+                fontSize: '0.78rem',
+                outline: 'none',
+                fontFamily: TYPOGRAPHY.fontFamily
+              }}
+              onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.5)'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
+            />
+          </div>
+
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            style={{
+              background: 'rgba(10,14,26,0.8)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: '#94a3b8',
+              borderRadius: BORDER_RADIUS.md,
+              padding: '8px 12px',
+              fontSize: '0.78rem',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
           >
             <option value="all">All Statuses</option>
             <option value="open">Open</option>
@@ -307,250 +357,350 @@ const Alerts = () => {
             <option value="closed">Closed</option>
           </select>
         </div>
-
-        <div>
-          <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-            Source
-          </label>
-          <select 
-            value={filters.source}
-            onChange={(e) => setFilters({ ...filters, source: e.target.value })}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
-          >
-            <option value="all">All Sources</option>
-            <option value="wazuh">Wazuh</option>
-            <option value="windows defender">Windows Defender</option>
-            <option value="sysmon">Sysmon</option>
-            <option value="windows event log">Windows Event Log</option>
-          </select>
-        </div>
-
-        <div>
-          <label style={{ display: 'block', fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>
-            Search
-          </label>
-          <input 
-            type="text"
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            placeholder="Search alerts..."
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
-          />
-        </div>
       </div>
 
-      {/* Alerts List */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        {filteredAlerts.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-            No alerts found matching the current filters
+      {/* ─── Alerts Stream Table ─── */}
+      <div style={{
+        background: 'rgba(15,23,42,0.7)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: BORDER_RADIUS.xl,
+        overflow: 'hidden',
+        backdropFilter: 'blur(16px)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+      }}>
+        {loading ? (
+          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+            <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              border: '3px solid rgba(99,102,241,0.2)',
+              borderTopColor: '#6366f1',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto 16px'
+            }} />
+            <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Reading real-time alerts from Wazuh Node...</div>
+          </div>
+        ) : filteredAlerts.length === 0 ? (
+          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', marginBottom: 12 }}>🛡️</div>
+            <div style={{ color: '#f8fafc', fontWeight: 600, fontSize: '1rem', marginBottom: 6 }}>
+              No Security Alerts in Current Filter
+            </div>
+            <div style={{ color: '#94a3b8', fontSize: '0.8rem', maxWidth: 440, margin: '0 auto' }}>
+              Wazuh SIEM engine is running and monitoring live telemetry. No events match the active criteria.
+            </div>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Title</th>
-                  <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Severity</th>
-                  <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Status</th>
-                  <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Source</th>
-                  <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Agent</th>
-                  <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Timestamp</th>
+                <tr style={{
+                  background: 'rgba(10,14,26,0.6)',
+                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  fontSize: '0.68rem'
+                }}>
+                  <th style={{ padding: '14px 20px' }}>Severity</th>
+                  <th style={{ padding: '14px 16px' }}>Rule & Description</th>
+                  <th style={{ padding: '14px 16px' }}>Agent</th>
+                  <th style={{ padding: '14px 16px' }}>Rule ID</th>
+                  <th style={{ padding: '14px 16px' }}>Status</th>
+                  <th style={{ padding: '14px 16px' }}>Timestamp</th>
+                  <th style={{ padding: '14px 20px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredAlerts.map((alert) => (
-                  <tr 
-                    key={alert.id} 
-                    style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
-                    onClick={() => handleAlertClick(alert)}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <td style={{ padding: '12px' }}>
-                      <div style={{ fontWeight: '500', color: '#1e3a5f' }}>{alert.title}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-                        {alert.rule}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{ 
-                        padding: '4px 8px', 
-                        borderRadius: '4px', 
-                        backgroundColor: getSeverityColor(alert.severity),
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}>
-                        {alert.severity}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{ 
-                        padding: '4px 8px', 
-                        borderRadius: '4px', 
-                        backgroundColor: getStatusColor(alert.status),
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}>
-                        {alert.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px' }}>{alert.source}</td>
-                    <td style={{ padding: '12px', fontFamily: 'monospace' }}>{alert.agent}</td>
-                    <td style={{ padding: '12px', fontSize: '14px' }}>
-                      {new Date(alert.timestamp).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                {filteredAlerts.map((alert, idx) => {
+                  const sevStyle = SEVERITY_CONFIG[alert.severity] || SEVERITY_CONFIG.Low;
+                  const currentStatus = statusMap[alert.id] || 'Open';
+
+                  return (
+                    <tr
+                      key={alert.id || idx}
+                      onClick={() => setSelectedAlert(alert)}
+                      style={{
+                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                        cursor: 'pointer',
+                        transition: 'background 120ms ease',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(30,41,59,0.35)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '14px 20px' }}>
+                        <span style={{
+                          background: sevStyle.bg,
+                          border: `1px solid ${sevStyle.border}`,
+                          color: sevStyle.text,
+                          padding: '3px 10px',
+                          borderRadius: 20,
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5
+                        }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: sevStyle.badge }} />
+                          {alert.severity} (Lvl {alert.level})
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '14px 16px', maxWidth: 360 }}>
+                        <div style={{ fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {alert.rule?.description || 'Security Event'}
+                        </div>
+                        {alert.rule?.groups?.length > 0 && (
+                          <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                            {alert.rule.groups.slice(0, 3).map((g, i) => (
+                              <span key={i} style={{
+                                background: 'rgba(99,102,241,0.1)',
+                                color: '#a5b4fc',
+                                fontSize: '0.62rem',
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                border: '1px solid rgba(99,102,241,0.2)'
+                              }}>
+                                {g}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontFamily: 'monospace', color: '#67e8f9', fontWeight: 600 }}>
+                          {alert.agent?.name || 'wazuh-manager'}
+                        </div>
+                        <div style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                          ID: {alert.agent?.id || '000'}
+                        </div>
+                      </td>
+
+                      <td style={{ padding: '14px 16px' }}>
+                        <code style={{ background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: 4, color: '#e2e8f0', fontSize: '0.72rem' }}>
+                          #{alert.rule?.id || 'N/A'}
+                        </code>
+                      </td>
+
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          background: currentStatus === 'Closed' ? 'rgba(16,185,129,0.15)' : currentStatus === 'Investigating' ? 'rgba(234,179,8,0.15)' : 'rgba(239,68,68,0.15)',
+                          color: currentStatus === 'Closed' ? '#6ee7b7' : currentStatus === 'Investigating' ? '#fde047' : '#fca5a5',
+                          border: `1px solid ${currentStatus === 'Closed' ? 'rgba(16,185,129,0.3)' : currentStatus === 'Investigating' ? 'rgba(234,179,8,0.3)' : 'rgba(239,68,68,0.3)'}`
+                        }}>
+                          {currentStatus}
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '14px 16px', color: '#94a3b8', fontSize: '0.72rem' }}>
+                        {alert.timestamp ? new Date(alert.timestamp).toLocaleString() : 'Recent'}
+                      </td>
+
+                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedAlert(alert);
+                          }}
+                          style={{
+                            background: 'rgba(99,102,241,0.15)',
+                            border: '1px solid rgba(99,102,241,0.3)',
+                            color: '#a5b4fc',
+                            padding: '4px 10px',
+                            borderRadius: BORDER_RADIUS.sm,
+                            fontSize: '0.7rem',
+                            cursor: 'pointer',
+                            fontWeight: 600
+                          }}
+                        >
+                          Inspect ➜
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Alert Details Modal */}
+      {/* ─── Alert Details Modal ─── */}
       {selectedAlert && (
-        <div style={{ 
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.5)', 
-          display: 'flex', 
-          alignItems: 'center', 
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000
+          zIndex: 1000,
+          padding: 20
         }}>
-          <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '8px', 
-            maxWidth: '800px', 
-            width: '90%', 
-            maxHeight: '90vh', 
-            overflow: 'auto',
-            padding: '24px'
+          <div style={{
+            background: '#0d1322',
+            border: '1px solid rgba(99,102,241,0.3)',
+            borderRadius: BORDER_RADIUS.xxl,
+            width: '100%',
+            maxWidth: 750,
+            maxHeight: '88vh',
+            overflowY: 'auto',
+            padding: 28,
+            boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+            position: 'relative'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, color: '#1e3a5f' }}>{selectedAlert.title}</h3>
-              <button 
-                onClick={closeAlertDetails}
-                style={{ 
-                  padding: '8px 12px', 
-                  backgroundColor: '#f3f4f6', 
-                  border: 'none', 
-                  borderRadius: '4px', 
-                  cursor: 'pointer' 
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{
+                    background: (SEVERITY_CONFIG[selectedAlert.severity] || SEVERITY_CONFIG.Low).bg,
+                    border: `1px solid ${(SEVERITY_CONFIG[selectedAlert.severity] || SEVERITY_CONFIG.Low).border}`,
+                    color: (SEVERITY_CONFIG[selectedAlert.severity] || SEVERITY_CONFIG.Low).text,
+                    padding: '2px 10px',
+                    borderRadius: 20,
+                    fontSize: '0.7rem',
+                    fontWeight: 700
+                  }}>
+                    {selectedAlert.severity} (Level {selectedAlert.level})
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+                    Alert ID: {selectedAlert.id}
+                  </span>
+                </div>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc' }}>
+                  {selectedAlert.rule?.description || 'Security Event Details'}
+                </h2>
+              </div>
+              <button
+                onClick={() => setSelectedAlert(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: 'none',
+                  color: '#94a3b8',
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 ✕
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '20px' }}>
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280' }}>Severity</label>
-                <div style={{ marginTop: '4px' }}>
-                  <span style={{ 
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    backgroundColor: getSeverityColor(selectedAlert.severity),
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: '500'
-                  }}>
-                    {selectedAlert.severity}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280' }}>Status</label>
-                <div style={{ marginTop: '4px' }}>
-                  <span style={{ 
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    backgroundColor: getStatusColor(selectedAlert.status),
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: '500'
-                  }}>
-                    {selectedAlert.status}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280' }}>Source</label>
-                <div style={{ marginTop: '4px', fontWeight: '500' }}>{selectedAlert.source}</div>
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280' }}>Agent</label>
-                <div style={{ marginTop: '4px', fontFamily: 'monospace' }}>{selectedAlert.agent}</div>
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280' }}>Rule</label>
-                <div style={{ marginTop: '4px', fontWeight: '500' }}>{selectedAlert.rule}</div>
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280' }}>Level</label>
-                <div style={{ marginTop: '4px', fontWeight: '500' }}>{selectedAlert.level}</div>
-              </div>
+            {/* Grid properties */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 12,
+              background: 'rgba(15,23,42,0.6)',
+              padding: 16,
+              borderRadius: BORDER_RADIUS.lg,
+              border: '1px solid rgba(255,255,255,0.04)',
+              marginBottom: 16,
+              fontSize: '0.75rem'
+            }}>
+              <div><span style={{ color: '#64748b' }}>Agent:</span> <strong style={{ color: '#67e8f9' }}>{selectedAlert.agent?.name}</strong></div>
+              <div><span style={{ color: '#64748b' }}>Location:</span> <strong style={{ color: '#e2e8f0' }}>{selectedAlert.location || 'Local'}</strong></div>
+              <div><span style={{ color: '#64748b' }}>Rule ID:</span> <strong style={{ color: '#a5b4fc' }}>{selectedAlert.rule?.id || 'N/A'}</strong></div>
+              <div><span style={{ color: '#64748b' }}>Timestamp:</span> <strong style={{ color: '#e2e8f0' }}>{selectedAlert.timestamp}</strong></div>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '12px', color: '#6b7280' }}>Description</label>
-              <div style={{ marginTop: '4px', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '4px' }}>
-                {selectedAlert.description}
+            {/* Full log raw content */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Telemetry Log Payload
+                </span>
+                <button
+                  onClick={() => handleCopyLog(selectedAlert.full_log)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: copiedLog ? '#10b981' : '#818cf8',
+                    cursor: 'pointer',
+                    fontSize: '0.72rem',
+                    fontWeight: 600
+                  }}
+                >
+                  {copiedLog ? '✓ Copied!' : '⎘ Copy Log'}
+                </button>
               </div>
+              <pre style={{
+                background: '#070a13',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: BORDER_RADIUS.md,
+                padding: '12px 14px',
+                fontSize: '0.72rem',
+                color: '#67e8f9',
+                fontFamily: 'JetBrains Mono, monospace',
+                maxHeight: 180,
+                overflowY: 'auto',
+                whiteHeight: 'pre-wrap',
+                wordBreak: 'break-word',
+                lineHeight: 1.5
+              }}>
+                {selectedAlert.full_log || 'No raw log text'}
+              </pre>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '12px', color: '#6b7280' }}>IOCs</label>
-              <div style={{ marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {selectedAlert.iocs?.map((ioc, index) => (
-                  <span key={index} style={{ 
-                    padding: '4px 8px', 
-                    backgroundColor: '#fef3c7', 
-                    borderRadius: '4px', 
-                    fontSize: '12px',
-                    fontFamily: 'monospace'
-                  }}>
-                    {ioc}
-                  </span>
+            {/* Quick Actions & Status */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+              paddingTop: 16,
+              borderTop: '1px solid rgba(255,255,255,0.06)'
+            }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Update Status:</span>
+                {['Open', 'Investigating', 'Closed'].map(st => (
+                  <button
+                    key={st}
+                    onClick={() => handleStatusChange(selectedAlert.id, st)}
+                    style={{
+                      background: (statusMap[selectedAlert.id] || 'Open') === st ? 'rgba(99,102,241,0.3)' : 'rgba(30,41,59,0.5)',
+                      border: `1px solid ${(statusMap[selectedAlert.id] || 'Open') === st ? '#818cf8' : 'rgba(255,255,255,0.08)'}`,
+                      color: (statusMap[selectedAlert.id] || 'Open') === st ? '#a5b4fc' : '#94a3b8',
+                      padding: '4px 10px',
+                      borderRadius: BORDER_RADIUS.sm,
+                      fontSize: '0.7rem',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    {st}
+                  </button>
                 ))}
               </div>
-            </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '12px', color: '#6b7280' }}>Mitigation</label>
-              <div style={{ marginTop: '4px', padding: '12px', backgroundColor: '#ecfdf5', borderRadius: '4px', color: '#065f46' }}>
-                {selectedAlert.mitigation}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <select 
-                value={selectedAlert.status}
-                onChange={(e) => updateAlertStatus(selectedAlert.id, e.target.value)}
-                style={{ padding: '8px', borderRadius: '4px', border: '1px solid #d1d5db' }}
-              >
-                <option value="Open">Open</option>
-                <option value="Investigating">Investigating</option>
-                <option value="Closed">Closed</option>
-              </select>
-              <button 
-                onClick={closeAlertDetails}
-                style={{ 
-                  padding: '8px 16px', 
-                  backgroundColor: '#3b82f6', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '4px', 
-                  cursor: 'pointer' 
+              <button
+                onClick={() => setSelectedAlert(null)}
+                style={{
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '8px 20px',
+                  borderRadius: BORDER_RADIUS.md,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
                 }}
               >
-                Close
+                Close Drawer
               </button>
             </div>
           </div>

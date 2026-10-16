@@ -1,17 +1,24 @@
 from typing import Optional
 from .orchestrator import SecurityCopilotOrchestrator
+from .orchestrator_enhanced import EnhancedSecurityCopilotOrchestrator
 from .schemas import InvestigationResponse
 
 
 class InvestigationService:
-    def __init__(self, orchestrator: Optional[SecurityCopilotOrchestrator] = None):
+    def __init__(self, orchestrator: Optional[SecurityCopilotOrchestrator] = None, use_enhanced: bool = True):
         """
         Initialize the Investigation Service.
         
         Args:
             orchestrator: Optional orchestrator instance. If not provided, creates a new one.
+            use_enhanced: Whether to use the enhanced orchestrator with comprehensive tool integration.
         """
-        self.orchestrator = orchestrator or SecurityCopilotOrchestrator()
+        if use_enhanced:
+            self.orchestrator = orchestrator or EnhancedSecurityCopilotOrchestrator()
+            self.enhanced_mode = True
+        else:
+            self.orchestrator = orchestrator or SecurityCopilotOrchestrator()
+            self.enhanced_mode = False
 
     def analyze_file_upload(self, filename: str, content_bytes: bytes) -> InvestigationResponse:
         """Process an uploaded file/image through orchestrator file analysis"""
@@ -51,35 +58,53 @@ class InvestigationService:
             - report_html: HTML version of the report
             - ai_answer: Natural language AI analysis response
         """
-        # Step 1: Run the orchestrator to process the query
-        result = self.orchestrator.analyze_query(query)
-        
-        # Debug output
-        print(f"[InvestigationService] Analysis complete for query: {query}")
-        
-        # Step 2: Extract LLM results
-        llm_result = result.get('llm', {})
-        
-        # Step 3: Get AI answer (with fallback if not available)
-        ai_answer = result.get('ai_answer')
-        if not ai_answer:
-            ai_answer = self._generate_fallback_answer(
-                result.get('report_json', {}), 
-                query
+        try:
+            # Step 1: Run the orchestrator to process the query
+            result = self.orchestrator.analyze_query(query)
+            
+            # Debug output
+            print(f"[InvestigationService] Analysis complete for query: {query}")
+            
+            # Step 2: Extract LLM results
+            llm_result = result.get('llm', {})
+            
+            # Step 3: Get AI answer (with fallback if not available)
+            ai_answer = result.get('ai_answer')
+            if not ai_answer:
+                ai_answer = self._generate_fallback_answer(
+                    result.get('report_json', {}), 
+                    query
+                )
+            
+            # Step 4: Return structured response
+            return InvestigationResponse(
+                required_tools=llm_result.get("required_tools", []),
+                query_type=llm_result.get("query_type", "other"),
+                intent=llm_result.get("intent", "unknown"),
+                recommendation=llm_result.get("recommendation"),
+                tool_responses=result.get("tool_responses"),
+                unified_investigation=result.get("unified_investigation"),
+                report_json=result.get("report_json"),
+                report_html=result.get("report_html"),
+                ai_answer=ai_answer,
             )
-        
-        # Step 4: Return structured response
-        return InvestigationResponse(
-            required_tools=llm_result.get("required_tools", []),
-            query_type=llm_result.get("query_type", "other"),
-            intent=llm_result.get("intent", "unknown"),
-            recommendation=llm_result.get("recommendation"),
-            tool_responses=result.get("tool_responses"),
-            unified_investigation=result.get("unified_investigation"),
-            report_json=result.get("report_json"),
-            report_html=result.get("report_html"),
-            ai_answer=ai_answer,
-        )
+        except Exception as e:
+            import traceback
+            print(f"[InvestigationService] Error in analyze_query: {e}")
+            traceback.print_exc()
+            
+            # Return a fallback response on error
+            return InvestigationResponse(
+                required_tools=[],
+                query_type="error",
+                intent="error",
+                recommendation=f"An error occurred: {str(e)}",
+                tool_responses=[],
+                unified_investigation={},
+                report_json={"error": str(e)},
+                report_html=f"<p>Error: {str(e)}</p>",
+                ai_answer=f"I encountered an error while processing your request: {str(e)}",
+            )
 
     def _generate_fallback_answer(self, report_json: dict, query: str) -> str:
         """
@@ -196,8 +221,43 @@ class InvestigationService:
         return {
             "service": "InvestigationService",
             "status": "healthy",
+            "mode": "enhanced" if self.enhanced_mode else "standard",
             "orchestrator": {
-                "default_tools": self.orchestrator.default_tools,
-                "llm_provider": self.orchestrator.llm_client.provider,
+                "default_tools": self.orchestrator.__class__.__name__,
+                "enhanced_features": self.enhanced_mode
+            },
+            "capabilities": {
+                "wazuh_integration": True,
+                "virustotal_integration": True,
+                "misp_integration": True,
+                "shodan_integration": True,
+                "abuseipdb_integration": True,
+                "alienvault_integration": True,
+                "windows_defender_integration": True,
+                "windows_logs_integration": True,
+                "comprehensive_reporting": self.enhanced_mode,
+                "multi_tool_correlation": self.enhanced_mode
             }
+        }
+    
+    def switch_mode(self, enhanced: bool = True) -> dict:
+        """
+        Switch between enhanced and standard orchestrator modes.
+        
+        Args:
+            enhanced: True for enhanced mode, False for standard mode
+            
+        Returns:
+            Dictionary with status update
+        """
+        self.enhanced_mode = enhanced
+        if enhanced:
+            self.orchestrator = EnhancedSecurityCopilotOrchestrator()
+        else:
+            self.orchestrator = SecurityCopilotOrchestrator()
+        
+        return {
+            "status": "success",
+            "mode": "enhanced" if enhanced else "standard",
+            "orchestrator": self.orchestrator.__class__.__name__
         }

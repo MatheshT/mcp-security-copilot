@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react';
-import Login from './components/Login';
-import Register from './components/Register';
+import { useState } from 'react';
 import AdminPanel from './components/AdminPanel';
 import AuditLogs from './components/AuditLogs';
 import BackupManagement from './components/BackupManagement';
@@ -18,48 +16,17 @@ import ThreatHunting from './components/security/ThreatHunting';
 import ReportsPanel from './components/security/ReportsPanel';
 import SettingsPanel from './components/security/SettingsPanel';
 import './styles/components.css';
-import './styles/auth.css';
 import './styles/enterprise.css';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('chat');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-    if (token && savedUser) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
-
-  const handleLogin = (userData) => {
-    setIsAuthenticated(true);
-    setUser(userData);
-  };
-
-  const handleRegister = (userData) => {
-    setShowRegister(false);
-    handleLogin(userData);
-  };
+  const [user] = useState({ username: 'Admin', roles: ['Administrator'] });
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setIsAuthenticated(false);
-    setUser(null);
+    // Logout functionality disabled - authentication removed
+    console.log('Logout clicked');
   };
-
-  if (!isAuthenticated) {
-    if (showRegister) {
-      return <Register onRegister={handleRegister} onLogin={() => setShowRegister(false)} />;
-    }
-    return <Login onLogin={handleLogin} onRegister={() => setShowRegister(true)} />;
-  }
 
   const renderContent = () => {
     switch (currentView) {
@@ -161,17 +128,36 @@ function App() {
       />
 
       {/* Main Content */}
-      <div className="main-content">
-        <header className="top-bar">
-          <h1>SentinelAI X</h1>
-          <div className="status-indicators">
-            <span className="status-badge online">● API Online</span>
-            <span className="status-badge online">● Database Connected</span>
-            <span className="status-badge online">● Cache Active</span>
+      <div
+        className="main-content"
+        style={{
+          marginLeft: sidebarCollapsed ? 80 : 280,
+          width: `calc(100% - ${sidebarCollapsed ? 80 : 280}px)`,
+          transition: 'margin-left 300ms ease, width 300ms ease',
+          minHeight: '100vh',
+          padding: '24px 32px 32px',
+          position: 'relative',
+          zIndex: 0,
+          boxSizing: 'border-box'
+        }}
+      >
+        <header className="top-bar" style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+            <div>
+              <h1 style={{ margin: 0 }}>SentinelAI X</h1>
+              <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                Your AI security operations dashboard.
+              </p>
+            </div>
+            <div className="status-indicators" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <span className="status-badge online">● API Online</span>
+              <span className="status-badge online">● Database Connected</span>
+              <span className="status-badge online">● Cache Active</span>
+            </div>
           </div>
         </header>
 
-        <main className="content-area">
+        <main className="content-area" style={{ minHeight: 'calc(100vh - 120px)' }}>
           {renderContent()}
         </main>
       </div>

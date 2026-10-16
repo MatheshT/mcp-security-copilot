@@ -1,5 +1,5 @@
-from fastapi import APIRouter
-from .routes import dashboard, search, report, investigation, users, audit, backup, feature_flags, windows_logs
+from fastapi import APIRouter, HTTPException
+from .routes import dashboard, search, report, investigation, users, audit, backup, feature_flags, windows_logs, wazuh
 
 router = APIRouter()
 
@@ -13,6 +13,7 @@ router.include_router(audit.router)
 router.include_router(backup.router)
 router.include_router(feature_flags.router)
 router.include_router(windows_logs.router)
+router.include_router(wazuh.router)
 
 @router.get("/health")
 async def health_check():
@@ -101,3 +102,80 @@ async def full_system_status():
             "uptime": "99.9%"
         }
     }
+
+
+@router.get("/logs/events")
+async def get_event_logs(time_range: str = "24h"):
+    """
+    Get event logs for the dashboard.
+    Simple endpoint to return sample event logs.
+    """
+    try:
+        from datetime import datetime, timedelta
+        
+        end_time = datetime.now()
+        start_time = end_time - timedelta(hours=24)
+        
+        # Generate sample logs
+        sample_logs = [
+            {
+                "id": 1,
+                "timestamp": (end_time - timedelta(minutes=5)).isoformat(),
+                "event_id": 4625,
+                "source": "Windows Security",
+                "computer_name": "WORKSTATION-01",
+                "user": "admin",
+                "description": "Failed logon attempt",
+                "severity": "high"
+            },
+            {
+                "id": 2,
+                "timestamp": (end_time - timedelta(minutes=15)).isoformat(),
+                "event_id": 4624,
+                "source": "Windows Security",
+                "computer_name": "WORKSTATION-02",
+                "user": "user1",
+                "description": "Successful logon",
+                "severity": "info"
+            },
+            {
+                "id": 3,
+                "timestamp": (end_time - timedelta(minutes=30)).isoformat(),
+                "event_id": 4720,
+                "source": "Windows Security",
+                "computer_name": "DC-01",
+                "user": "SYSTEM",
+                "description": "User account created",
+                "severity": "high"
+            },
+            {
+                "id": 4,
+                "timestamp": (end_time - timedelta(hours=1)).isoformat(),
+                "event_id": 4688,
+                "source": "Windows Security",
+                "computer_name": "WORKSTATION-01",
+                "user": "admin",
+                "description": "Special privileges assigned to new logon",
+                "severity": "medium"
+            },
+            {
+                "id": 5,
+                "timestamp": (end_time - timedelta(hours=2)).isoformat(),
+                "event_id": 7045,
+                "source": "Windows System",
+                "computer_name": "WORKSTATION-03",
+                "user": "SYSTEM",
+                "description": "New service installed",
+                "severity": "high"
+            }
+        ]
+        
+        return {
+            "logs": sample_logs,
+            "total": len(sample_logs),
+            "time_range": time_range,
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

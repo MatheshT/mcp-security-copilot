@@ -1,223 +1,262 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+import axios from 'axios';
 
-class ApiService {
-  constructor() {
-    this.baseURL = API_BASE_URL;
-  }
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
-  getHeaders() {
+console.log('=== API Configuration ===');
+console.log('API Base URL:', API_BASE_URL);
+console.log('Environment VITE_API_URL:', import.meta.env.VITE_API_URL);
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30000, // 30 second timeout for API calls (Wazuh can be slow)
+});
+
+// Separate instance for Wazuh endpoints with extended timeout
+const wazuhApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 40000, // 40 second timeout for Wazuh endpoints
+});
+
+// Request interceptor for main API
+api.interceptors.request.use(
+  (config) => {
+    console.log('🚀 API Request:', config.method?.toUpperCase(), config.url);
     const token = localStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json'
-    };
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return headers;
+    return config;
+  },
+  (error) => {
+    console.error('❌ API Request error:', error);
+    return Promise.reject(error);
   }
+);
 
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const config = {
-      ...options,
-      headers: {
-        ...this.getHeaders(),
-        ...options.headers
-      }
-    };
-
-    try {
-      const response = await fetch(url, config);
-      
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return null;
-      }
-
-      if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
+// Response interceptor for main API
+api.interceptors.response.use(
+  (response) => {
+    console.log('✅ API Response successful:', response.config.url, response.status);
+    return response;
+  },
+  (error) => {
+    console.error('❌ API Response error:', error.config?.url, error.message);
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
+    return Promise.reject(error);
   }
+);
 
-  // Auth endpoints
-  async login(username, password) {
-    return this.request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password })
-    });
-  }
-
-  async register(userData) {
-    return this.request('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData)
-    });
-  }
-
-  async logout() {
-    await this.request('/api/auth/logout', { method: 'POST' });
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  }
-
-  async getCurrentUser() {
-    return this.request('/api/auth/me');
-  }
-
-  // Investigation endpoints
-  async investigate(query) {
-    return this.request('/api/investigate', {
-      method: 'POST',
-      body: JSON.stringify({ query })
-    });
-  }
-
-  async uploadFile(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-    
+// Add same interceptors to Wazuh API
+wazuhApi.interceptors.request.use(
+  (config) => {
+    console.log('🚀 Wazuh API Request:', config.method?.toUpperCase(), config.url);
     const token = localStorage.getItem('token');
-    const response = await fetch(`${this.baseURL}/api/upload`, {
-      method: 'POST',
-      headers: {
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Upload failed');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-
-    return response.json();
+    return config;
+  },
+  (error) => {
+    console.error('❌ Wazuh API Request error:', error);
+    return Promise.reject(error);
   }
+);
 
-  // User management
-  async getUsers() {
-    return this.request('/api/users/');
+wazuhApi.interceptors.response.use(
+  (response) => {
+    console.log('✅ Wazuh API Response successful:', response.config.url, response.status);
+    return response;
+  },
+  (error) => {
+    console.error('❌ Wazuh API Response error:', error.config?.url, error.message);
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
   }
+);
 
-  async createUser(userData) {
-    return this.request('/api/users/', {
-      method: 'POST',
-      body: JSON.stringify(userData)
-    });
+// Dashboard APIs
+export const getDashboardData = async () => {
+  const response = await api.get('/api/dashboard');
+  return response.data;
+};
+
+export const getSecurityOverview = async () => {
+  const response = await api.get('/api/dashboard/security-overview');
+  return response.data;
+};
+
+export const getThreatTimeline = async () => {
+  const response = await api.get('/api/dashboard/threat-timeline');
+  return response.data;
+};
+
+// Investigation APIs
+export const investigateQuery = async (query) => {
+  const response = await api.post('/api/investigation/investigate', { query });
+  return response.data;
+};
+
+export const chatWithAI = async (message) => {
+  const response = await api.post('/api/investigation/chat', { query: message, message });
+  return response.data;
+};
+
+export const comprehensiveInvestigation = async (query, options = {}) => {
+  const response = await api.post('/api/investigation/comprehensive', {
+    query,
+    use_all_tools: options.useAllTools !== false,
+    focus_wazuh: options.focusWazuh !== false
+  });
+  return response.data;
+};
+
+export const getInvestigationStatus = async () => {
+  const response = await api.get('/api/investigation/status');
+  return response.data;
+};
+
+export const switchInvestigationMode = async (enhanced = true) => {
+  const response = await api.post('/api/investigation/switch-mode', null, {
+    params: { enhanced }
+  });
+  return response.data;
+};
+
+export const uploadInvestigationFile = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/api/investigation/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+// Wazuh APIs (using extended timeout)
+export const getWazuhAlerts = async (params = {}) => {
+  const response = await wazuhApi.get('/api/detection/wazuh/alerts', { params });
+  return response.data;
+};
+
+export const getAlerts = async (params = {}) => {
+  // Alias for Wazuh alerts to maintain compatibility
+  return getWazuhAlerts(params);
+};
+
+export const getWazuhAgents = async () => {
+  const response = await wazuhApi.get('/api/detection/wazuh/agents');
+  return response.data;
+};
+
+export const getWazuhStatistics = async () => {
+  const response = await wazuhApi.get('/api/detection/wazuh/statistics');
+  return response.data;
+};
+
+export const collectWazuhLogs = async (params = {}) => {
+  const response = await wazuhApi.get('/api/detection/wazuh/logs/collect', { params });
+  return response.data;
+};
+
+export const restartWazuhAgent = async (agentId) => {
+  const response = await api.post(`/api/detection/wazuh/agents/${agentId}/restart`);
+  return response.data;
+};
+
+export const updateAlertStatus = async (alertId, status) => {
+  const response = await api.put(`/api/detection/alerts/${alertId}/status`, { status });
+  return response.data;
+};
+
+export const getEventLogs = async (timeRange = '24h') => {
+  try {
+    const response = await api.get('/api/logs/events', { params: { time_range: timeRange } });
+    return response.data;
+  } catch (error) {
+    console.error('Error loading event logs:', error);
+    // Return empty logs if endpoint doesn't exist
+    return { logs: [], total: 0 };
   }
+};
 
-  async deleteUser(userId) {
-    return this.request(`/api/users/${userId}`, {
-      method: 'DELETE'
-    });
+export const getWazuhDashboard = async () => {
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+    console.log('=== Fetching Wazuh Dashboard ===');
+    console.log('API URL:', apiUrl);
+    console.log('Full endpoint:', `${apiUrl}/api/dashboard/wazuh`);
+    
+    const response = await api.get('/api/dashboard/wazuh');
+    console.log('Wazuh dashboard API call successful:', response.data);
+    console.log('Response connected status:', response.data?.connected);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Wazuh dashboard API call failed:', error);
+    console.error('Error details:', error.response?.data || error.message);
+    throw error;
   }
+};
 
-  // Audit logs
-  async getAuditLogs(filters = {}) {
-    const params = new URLSearchParams(filters);
-    return this.request(`/api/audit/?${params}`);
-  }
+// Search APIs
+export const searchSecurityEvents = async (query, filters = {}) => {
+  const response = await api.post('/api/search/events', { query, filters });
+  return response.data;
+};
 
-  // Backup management
-  async getBackups() {
-    return this.request('/api/backup/list');
-  }
+export const searchThreats = async (indicators) => {
+  const response = await api.post('/api/search/threats', { indicators });
+  return response.data;
+};
 
-  async createBackup(backupName) {
-    return this.request('/api/backup/create', {
-      method: 'POST',
-      body: JSON.stringify({ backup_name: backupName })
-    });
-  }
+// Report APIs
+export const generateInvestigationReport = async (data) => {
+  const response = await api.post('/api/report/investigation', data);
+  return response.data;
+};
 
-  async restoreBackup(backupName) {
-    return this.request(`/api/backup/restore/${backupName}`, {
-      method: 'POST'
-    });
-  }
+export const getReportHistory = async () => {
+  const response = await api.get('/api/report/history');
+  return response.data;
+};
 
-  async deleteBackup(backupName) {
-    return this.request(`/api/backup/${backupName}`, {
-      method: 'DELETE'
-    });
-  }
+// User APIs
+export const login = async (credentials) => {
+  const response = await api.post('/api/users/login', credentials);
+  return response.data;
+};
 
-  async cleanupBackups() {
-    return this.request('/api/backup/cleanup', {
-      method: 'POST'
-    });
-  }
+export const logout = async () => {
+  const response = await api.post('/api/users/logout');
+  return response.data;
+};
 
-  // Feature flags
-  async getFeatureFlags() {
-    return this.request('/api/feature-flags/');
-  }
+export const getUserProfile = async () => {
+  const response = await api.get('/api/users/profile');
+  return response.data;
+};
 
-  async updateFeatureFlag(flagName, data) {
-    return this.request(`/api/feature-flags/${flagName}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-  }
+// Health Check
+export const healthCheck = async () => {
+  const response = await api.get('/api/health');
+  return response.data;
+};
 
-  // Windows Logs endpoints
-  async getSecurityEvents(hours = 24, limit = 100) {
-    return this.request(`/api/windows-logs/security?hours=${hours}&limit=${limit}`);
-  }
+export const systemInfo = async () => {
+  const response = await api.get('/api/info');
+  return response.data;
+};
 
-  async getSystemEvents(hours = 24, limit = 100) {
-    return this.request(`/api/windows-logs/system?hours=${hours}&limit=${limit}`);
-  }
-
-  async getApplicationEvents(hours = 24, limit = 100) {
-    return this.request(`/api/windows-logs/application?hours=${hours}&limit=${limit}`);
-  }
-
-  async getWindowsLogStats() {
-    return this.request('/api/windows-logs/stats');
-  }
-
-  // Detection endpoints
-  async getWazuhAlerts(timeRange = '24h') {
-    return this.request(`/api/detection/wazuh/alerts?time_range=${timeRange}`);
-  }
-
-  async getWazuhAgents() {
-    return this.request('/api/detection/wazuh/agents');
-  }
-
-  async getAlerts(filters = {}) {
-    const params = new URLSearchParams(filters);
-    return this.request(`/api/detection/alerts?${params}`);
-  }
-
-  async updateAlertStatus(alertId, status) {
-    return this.request(`/api/detection/alerts/${alertId}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status })
-    });
-  }
-
-  async getEventLogs(timeRange = '24h', filters = {}) {
-    const params = new URLSearchParams({ ...filters, time_range: timeRange });
-    return this.request(`/api/detection/event-logs?${params}`);
-  }
-
-  async restartWazuhAgent(agentId) {
-    return this.request(`/api/detection/wazuh/agents/${agentId}/restart`, {
-      method: 'POST'
-    });
-  }
-
-  async getDetectionStatistics() {
-    return this.request('/api/detection/statistics');
-  }
-}
-
-export default new ApiService();
+export default api;

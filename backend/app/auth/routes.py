@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
 
@@ -10,21 +10,7 @@ from .dependencies import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
-class UserLogin(BaseModel):
-    username: str
-    password: str
 
-class UserRegister(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
-    full_name: Optional[str] = None
-
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    user: dict
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
@@ -38,76 +24,7 @@ class UserResponse(BaseModel):
     is_superuser: bool
     roles: list
 
-@router.post("/login", response_model=TokenResponse)
-async def login(credentials: UserLogin, request: Request, db: Session = Depends(get_db)):
-    """Authenticate user and return tokens"""
-    auth_service = AuthService(db)
-    
-    user = auth_service.authenticate_user(credentials.username, credentials.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
-        )
-    
-    # Create session
-    session = auth_service.create_user_session(
-        user=user,
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent")
-    )
-    
-    # Log audit event
-    auth_service.log_audit_event(
-        user_id=user.id,
-        action="login",
-        resource="auth",
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent")
-    )
-    
-    return TokenResponse(
-        access_token=session.token,
-        refresh_token=session.refresh_token,
-        user={
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "full_name": user.full_name,
-            "is_active": user.is_active,
-            "is_superuser": user.is_superuser,
-            "roles": [role.name for role in user.roles]
-        }
-    )
 
-@router.post("/register", response_model=UserResponse)
-async def register(user_data: UserRegister, request: Request, db: Session = Depends(get_db)):
-    """Register a new user"""
-    auth_service = AuthService(db)
-    
-    user = auth_service.create_user(
-        username=user_data.username,
-        email=user_data.email,
-        password=user_data.password,
-        full_name=user_data.full_name
-    )
-    
-    return UserResponse(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        is_active=user.is_active,
-        is_superuser=user.is_superuser,
-        roles=[role.name for role in user.roles]
-    )
 
 @router.post("/refresh")
 async def refresh_token(token_data: RefreshTokenRequest, db: Session = Depends(get_db)):
@@ -171,7 +88,7 @@ async def get_user_permissions(current_user: User = Depends(get_current_user), d
     """Get current user's permissions"""
     auth_service = AuthService(db)
     
-    if user.is_superuser:
+    if current_user.is_superuser:
         # Superusers have all permissions
         permissions = db.query(Permission).all()
     else:
@@ -180,7 +97,7 @@ async def get_user_permissions(current_user: User = Depends(get_current_user), d
             Permission.roles
         ).join(
             Role.users
-        ).filter(User.id == user.id).all()
+        ).filter(User.id == current_user.id).all()
     
     return {
         "permissions": [

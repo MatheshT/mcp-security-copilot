@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     OPENAI_MAX_TOKENS: int = 2000
     
     # Security Tools
+    WAZUH_URL: Optional[str] = os.getenv("WAZUH_URL")
     WAZUH_API_URL: Optional[str] = os.getenv("WAZUH_API_URL")
     WAZUH_API_KEY: Optional[str] = os.getenv("WAZUH_API_KEY")
     VIRUSTOTAL_API_KEY: Optional[str] = os.getenv("VIRUSTOTAL_API_KEY")

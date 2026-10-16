@@ -86,7 +86,11 @@ class SecurityCopilotOrchestrator:
                     "virustotal_report": None,
                     "wazuh_report": None,
                     "misp_report": None,
-                    "shodan_report": None
+                    "shodan_report": None,
+                    "abuseipdb_report": None,
+                    "alienvault_report": None,
+                    "windows_defender_report": None,
+                    "windows_logs_report": None
                 },
                 "visual_data": {
                     "threat_score": 0,
@@ -132,14 +136,47 @@ class SecurityCopilotOrchestrator:
 
             if tool_name_lower == "wazuh":
                 print(">>> EXECUTING WAZUH MCP TOOL <<<")
-                cmd = tool_commands.get('Wazuh', ['get_alerts'])[0]
-                wazuh_response = self.mcp_client.call_tool("Wazuh", cmd)
-                responses.append(wazuh_response)
-
-                if wazuh_response.data and wazuh_response.data.get("alerts"):
-                    alerts = wazuh_response.data.get("alerts", [])
+                # Enhanced Wazuh integration with multiple data sources
+                wazuh_commands = tool_commands.get('Wazuh', ['get_alerts'])
+                
+                # Execute multiple Wazuh commands for comprehensive investigation
+                wazuh_data = {}
+                for cmd in wazuh_commands:
+                    try:
+                        wazuh_response = self.mcp_client.call_tool("Wazuh", cmd)
+                        responses.append(wazuh_response)
+                        
+                        # Handle both ToolResponse objects and raw responses
+                        response_data = {}
+                        if hasattr(wazuh_response, 'data'):
+                            response_data = wazuh_response.data
+                        elif isinstance(wazuh_response, dict):
+                            response_data = wazuh_response
+                        else:
+                            response_data = wazuh_response
+                        
+                        # Collect different types of Wazuh data
+                        if cmd.startswith('get_alerts'):
+                            wazuh_data['alerts'] = response_data.get("alerts", []) if isinstance(response_data, dict) else []
+                        elif cmd.startswith('get_agents'):
+                            wazuh_data['agents'] = response_data.get("agents", []) if isinstance(response_data, dict) else []
+                        elif cmd.startswith('get_statistics'):
+                            wazuh_data['statistics'] = response_data
+                        elif cmd.startswith('get_rules'):
+                            wazuh_data['rules'] = response_data.get("rules", []) if isinstance(response_data, dict) else []
+                        elif cmd.startswith('get_vulnerabilities'):
+                            wazuh_data['vulnerabilities'] = response_data.get("vulnerabilities", []) if isinstance(response_data, dict) else []
+                            
+                    except Exception as e:
+                        print(f"Error executing Wazuh command {cmd}: {e}")
+                        continue
+                
+                # Extract comprehensive data from Wazuh
+                if wazuh_data.get("alerts"):
+                    alerts = wazuh_data["alerts"]
                     requested_alert = entities.get('alert_id')
                     selected_alert = None
+                    
                     if requested_alert:
                         selected_alert = next((a for a in alerts if str(a.get("alert_id") or a.get("id")) == str(requested_alert)), None)
                     if selected_alert is None and alerts:
@@ -148,6 +185,26 @@ class SecurityCopilotOrchestrator:
                     if selected_alert:
                         raw = selected_alert.get("raw", {})
                         extracted_data['source_ip'] = selected_alert.get("source_ip") or raw.get("src_ip") or extracted_data['source_ip']
+                        extracted_data['destination_ip'] = selected_alert.get("destination_ip") or raw.get("dst_ip") or selected_alert.get("dest_ip")
+                        extracted_data['affected_host'] = selected_alert.get("agent", {}).get("name") or selected_alert.get("hostname")
+                        extracted_data['alert_details'] = selected_alert
+                        extracted_data['wazuh_alerts'] = alerts
+                
+                # Add agent information
+                if wazuh_data.get("agents"):
+                    extracted_data['wazuh_agents'] = wazuh_data["agents"]
+                    extracted_data['agent_count'] = len(wazuh_data["agents"])
+                    extracted_data['active_agents'] = len([a for a in wazuh_data["agents"] if a.get("status") == "active"])
+                
+                # Add statistics
+                if wazuh_data.get("statistics"):
+                    extracted_data['wazuh_statistics'] = wazuh_data["statistics"]
+                
+                # Add rules and vulnerabilities
+                if wazuh_data.get("rules"):
+                    extracted_data['wazuh_rules'] = wazuh_data["rules"]
+                if wazuh_data.get("vulnerabilities"):
+                    extracted_data['wazuh_vulnerabilities'] = wazuh_data["vulnerabilities"]
 
             elif tool_name_lower == "virustotal":
                 print(">>> EXECUTING VIRUSTOTAL MCP TOOL <<<")
@@ -162,8 +219,19 @@ class SecurityCopilotOrchestrator:
                 vt_response = self.mcp_client.call_tool("VirusTotal", cmd)
                 responses.append(vt_response)
 
-                if vt_response.data and vt_response.data.get("result"):
-                    extracted_data['vt_results'] = vt_response.data.get("result")
+                # Handle both ToolResponse objects and raw responses
+                vt_data = {}
+                if hasattr(vt_response, 'data'):
+                    if vt_response.data and vt_response.data.get("result"):
+                        vt_data = vt_response.data.get("result")
+                        extracted_data['vt_results'] = vt_data
+                elif isinstance(vt_response, dict):
+                    if vt_response.get("result"):
+                        vt_data = vt_response.get("result")
+                        extracted_data['vt_results'] = vt_data
+                else:
+                    vt_data = vt_response
+                    extracted_data['vt_results'] = vt_data
 
             elif tool_name_lower == "misp":
                 print(">>> EXECUTING MISP MCP TOOL <<<")
@@ -176,6 +244,18 @@ class SecurityCopilotOrchestrator:
                 target = extracted_data['source_ip'] or entities.get('ip') or '185.220.101.45'
                 shodan_response = self.mcp_client.call_tool("Shodan", f"search {target}")
                 responses.append(shodan_response)
+
+            elif tool_name_lower == "abuseipdb":
+                print(">>> EXECUTING ABUSEIPDB MCP TOOL <<<")
+                target = extracted_data['source_ip'] or entities.get('ip') or '185.220.101.45'
+                abuseipdb_response = self.mcp_client.call_tool("AbuseIPDB", f"check {target}")
+                responses.append(abuseipdb_response)
+
+            elif tool_name_lower == "alienvault" or tool_name_lower == "alienvault otx":
+                print(">>> EXECUTING ALIENVAULT OTX MCP TOOL <<<")
+                target = extracted_data['source_ip'] or entities.get('ip') or '185.220.101.45'
+                alienvault_response = self.mcp_client.call_tool("AlienVault OTX", f"check {target}")
+                responses.append(alienvault_response)
 
             elif tool_name_lower in ["windowslogs", "windows_event"]:
                 print(">>> EXECUTING WINDOWS LOGS MCP TOOL <<<")

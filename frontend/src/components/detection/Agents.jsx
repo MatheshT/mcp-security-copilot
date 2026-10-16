@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import { getWazuhAgents, restartWazuhAgent } from '../../services/api';
 
 const Agents = () => {
   const [agents, setAgents] = useState([]);
@@ -26,182 +26,70 @@ const Agents = () => {
       setLoading(true);
       setError(null);
 
-      const agentsData = await api.getWazuhAgents();
-      if (agentsData) {
-        setAgents(agentsData.agents || []);
+      const agentsData = await getWazuhAgents();
+      console.log('Wazuh agents response:', agentsData);
+      console.log('Raw agents data:', agentsData.agents);
+      
+      if (agentsData && agentsData.agents) {
+        // Transform Wazuh API data to match component format
+        const transformedAgents = agentsData.agents.map(agent => {
+          // Handle group which can be array, object, or string
+          let groupList = [];
+          if (Array.isArray(agent.group)) {
+            groupList = agent.group;
+          } else if (typeof agent.group === 'object' && agent.group !== null) {
+            groupList = Object.keys(agent.group);
+          } else if (typeof agent.group === 'string') {
+            groupList = [agent.group];
+          }
+
+          return {
+            id: agent.id,
+            name: agent.name,
+            ip: agent.ip || agent.registerIP || 'N/A',
+            status: agent.status || 'unknown',
+            os: agent.os?.name || agent.os?.platform || 'Unknown OS',
+            version: agent.version || 'N/A',
+            last_keepalive: agent.lastKeepAlive || null,
+            first_keepalive: agent.dateAdd || null,
+            config_sum: agent.configSum || 'N/A',
+            merged_sum: agent.mergedSum || 'N/A',
+            manager_host: agent.manager || 'N/A',
+            node_name: agent.node_name || 'N/A',
+            group: groupList,
+            active_events: 0, // Wazuh doesn't provide this directly
+            alerts_count: 0, // Will be updated from alerts endpoint
+            vulnerability_count: 0
+          };
+        });
+        
+        setAgents(transformedAgents);
+        console.log('Successfully loaded', transformedAgents.length, 'real Wazuh agents');
+      } else {
+        setError('No agents data received from Wazuh');
       }
     } catch (err) {
       console.error('Error loading agents:', err);
-      setError('Failed to load agents. Using mock data for demonstration.');
-      loadMockAgents();
+      setError(`Failed to load agents: ${err.message}. Please check Wazuh connectivity.`);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadMockAgents = () => {
-    const mockAgents = [
-      {
-        id: '001',
-        name: 'web-server-01',
-        ip: '192.168.1.10',
-        status: 'active',
-        os: 'Ubuntu 22.04 LTS',
-        version: '4.4.0',
-        last_keepalive: '2024-01-15T10:30:00Z',
-        first_keepalive: '2024-01-01T00:00:00Z',
-        config_sum: 'abc123',
-        merged_sum: 'def456',
-        manager_host: 'wazuh-manager',
-        node_name: 'node-01',
-        group: ['web-servers', 'production'],
-        active_events: 234,
-        alerts_count: 12,
-        vulnerability_count: 3
-      },
-      {
-        id: '002',
-        name: 'web-server-02',
-        ip: '192.168.1.11',
-        status: 'active',
-        os: 'Ubuntu 22.04 LTS',
-        version: '4.4.0',
-        last_keepalive: '2024-01-15T10:29:00Z',
-        first_keepalive: '2024-01-01T00:00:00Z',
-        config_sum: 'ghi789',
-        merged_sum: 'jkl012',
-        manager_host: 'wazuh-manager',
-        node_name: 'node-01',
-        group: ['web-servers', 'production'],
-        active_events: 189,
-        alerts_count: 8,
-        vulnerability_count: 1
-      },
-      {
-        id: '003',
-        name: 'db-server-01',
-        ip: '192.168.1.20',
-        status: 'active',
-        os: 'CentOS 8',
-        version: '4.3.0',
-        last_keepalive: '2024-01-15T10:28:00Z',
-        first_keepalive: '2024-01-02T00:00:00Z',
-        config_sum: 'mno345',
-        merged_sum: 'pqr678',
-        manager_host: 'wazuh-manager',
-        node_name: 'node-02',
-        group: ['database-servers', 'production'],
-        active_events: 567,
-        alerts_count: 23,
-        vulnerability_count: 5
-      },
-      {
-        id: '004',
-        name: 'workstation-15',
-        ip: '192.168.2.45',
-        status: 'disconnected',
-        os: 'Windows 11',
-        version: '4.4.0',
-        last_keepalive: '2024-01-15T08:00:00Z',
-        first_keepalive: '2024-01-05T00:00:00Z',
-        config_sum: 'stu901',
-        merged_sum: 'vwx234',
-        manager_host: 'wazuh-manager',
-        node_name: 'node-01',
-        group: ['workstations', 'office'],
-        active_events: 0,
-        alerts_count: 0,
-        vulnerability_count: 0
-      },
-      {
-        id: '005',
-        name: 'file-server-01',
-        ip: '192.168.1.30',
-        status: 'active',
-        os: 'Windows Server 2022',
-        version: '4.4.0',
-        last_keepalive: '2024-01-15T10:30:00Z',
-        first_keepalive: '2024-01-03T00:00:00Z',
-        config_sum: 'yzab56',
-        merged_sum: 'cdef78',
-        manager_host: 'wazuh-manager',
-        node_name: 'node-02',
-        group: ['file-servers', 'production'],
-        active_events: 123,
-        alerts_count: 5,
-        vulnerability_count: 2
-      },
-      {
-        id: '006',
-        name: 'mail-server-01',
-        ip: '192.168.1.40',
-        status: 'active',
-        os: 'Ubuntu 20.04 LTS',
-        version: '4.3.0',
-        last_keepalive: '2024-01-15T10:27:00Z',
-        first_keepalive: '2024-01-04T00:00:00Z',
-        config_sum: 'ghij01',
-        merged_sum: 'klmn23',
-        manager_host: 'wazuh-manager',
-        node_name: 'node-01',
-        group: ['mail-servers', 'production'],
-        active_events: 345,
-        alerts_count: 15,
-        vulnerability_count: 4
-      },
-      {
-        id: '007',
-        name: 'workstation-08',
-        ip: '192.168.2.38',
-        status: 'never_connected',
-        os: 'Windows 10',
-        version: '4.4.0',
-        last_keepalive: null,
-        first_keepalive: '2024-01-10T00:00:00Z',
-        config_sum: 'opqr45',
-        merged_sum: 'stuv67',
-        manager_host: 'wazuh-manager',
-        node_name: 'node-01',
-        group: ['workstations', 'office'],
-        active_events: 0,
-        alerts_count: 0,
-        vulnerability_count: 0
-      },
-      {
-        id: '008',
-        name: 'backup-server-01',
-        ip: '192.168.1.50',
-        status: 'active',
-        os: 'Ubuntu 22.04 LTS',
-        version: '4.4.0',
-        last_keepalive: '2024-01-15T10:30:00Z',
-        first_keepalive: '2024-01-06T00:00:00Z',
-        config_sum: 'wxyz89',
-        merged_sum: 'abcd01',
-        manager_host: 'wazuh-manager',
-        node_name: 'node-02',
-        group: ['backup-servers', 'production'],
-        active_events: 45,
-        alerts_count: 2,
-        vulnerability_count: 0
-      }
-    ];
 
-    setAgents(mockAgents);
-  };
 
   const applyFilters = () => {
     let filtered = [...agents];
 
     if (filters.status !== 'all') {
       filtered = filtered.filter(agent => 
-        agent.status.toLowerCase() === filters.status.toLowerCase()
+        agent.status?.toLowerCase() === filters.status.toLowerCase()
       );
     }
 
     if (filters.os !== 'all') {
       filtered = filtered.filter(agent => 
-        agent.os.toLowerCase().includes(filters.os.toLowerCase())
+        agent.os?.toLowerCase().includes(filters.os.toLowerCase())
       );
     }
 
@@ -236,38 +124,43 @@ const Agents = () => {
 
   const restartAgent = async (agentId) => {
     try {
-      await api.restartWazuhAgent(agentId);
+      await restartWazuhAgent(agentId);
       alert(`Agent ${agentId} restart command sent successfully`);
+      // Reload agents to get updated status
+      loadAgents();
     } catch (err) {
       console.error('Error restarting agent:', err);
-      alert(`Failed to restart agent ${agentId} (mock for demo)`);
+      alert(`Failed to restart agent ${agentId}: ${err.message}`);
     }
   };
 
   const getOSIcon = (os) => {
-    if (os.toLowerCase().includes('windows')) return '🪟';
-    if (os.toLowerCase().includes('ubuntu')) return '🐧';
-    if (os.toLowerCase().includes('centos')) return '🐧';
+    if (!os) return '💻';
+    const osLower = os.toLowerCase();
+    if (osLower.includes('windows')) return '🪟';
+    if (osLower.includes('ubuntu') || osLower.includes('linux') || osLower.includes('amazon')) return '🐧';
+    if (osLower.includes('centos') || osLower.includes('red hat') || osLower.includes('rhel')) return '🐧';
+    if (osLower.includes('macos') || osLower.includes('darwin')) return '🍎';
     return '💻';
   };
 
   if (loading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
-        <div style={{ fontSize: '18px', color: '#666' }}>Loading agents...</div>
+        <div style={{ fontSize: '18px', color: 'var(--text-secondary)' }}>Loading agents...</div>
       </div>
     );
   }
 
-  const activeCount = agents.filter(a => a.status === 'active').length;
-  const disconnectedCount = agents.filter(a => a.status === 'disconnected').length;
-  const neverConnectedCount = agents.filter(a => a.status === 'never_connected').length;
+  const activeCount = agents.filter(a => a.status?.toLowerCase() === 'active').length;
+  const disconnectedCount = agents.filter(a => a.status?.toLowerCase() === 'disconnected').length;
+  const neverConnectedCount = agents.filter(a => a.status?.toLowerCase() === 'never_connected').length;
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif' }}>
+    <div className="detection-dark-view" style={{ padding: '20px', fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif' }}>
       <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ margin: 0, color: '#1e3a5f' }}>🖥️ Wazuh Agents</h2>
-        <p style={{ color: '#6b7280', margin: '8px 0 0 0' }}>
+        <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>🖥️ Wazuh Agents</h2>
+        <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0 0' }}>
           Total: {agents.length} agents | Active: {activeCount} | Disconnected: {disconnectedCount} | Never Connected: {neverConnectedCount}
         </p>
       </div>
@@ -275,11 +168,11 @@ const Agents = () => {
       {error && (
         <div style={{ 
           padding: '12px', 
-          backgroundColor: '#fef3c7', 
-          border: '1px solid #f59e0b', 
+          backgroundColor: 'var(--warning-bg)',
+          border: '1px solid var(--warning-border)',
           borderRadius: '4px', 
           marginBottom: '20px',
-          color: '#92400e'
+          color: 'var(--warning)'
         }}>
           ⚠️ {error}
         </div>
@@ -295,7 +188,7 @@ const Agents = () => {
 
       {/* Filters */}
       <div style={{ 
-        backgroundColor: 'white', 
+        backgroundColor: 'var(--bg-surface)',
         padding: '16px', 
         borderRadius: '8px', 
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)', 
@@ -351,7 +244,7 @@ const Agents = () => {
       </div>
 
       {/* Agents List */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ backgroundColor: 'var(--bg-surface)', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.35)' }}>
         {filteredAgents.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
             No agents found matching the current filters
@@ -360,7 +253,7 @@ const Agents = () => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                <tr style={{ borderBottom: '2px solid var(--bg-hover)', backgroundColor: 'var(--bg-elevated)' }}>
                   <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>ID</th>
                   <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>Name</th>
                   <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280', fontWeight: '600' }}>IP Address</th>
@@ -374,14 +267,14 @@ const Agents = () => {
                 {filteredAgents.map((agent) => (
                   <tr 
                     key={agent.id} 
-                    style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                    style={{ borderBottom: '1px solid var(--bg-hover)', cursor: 'pointer' }}
                     onClick={() => handleAgentClick(agent)}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <td style={{ padding: '12px', fontFamily: 'monospace' }}>{agent.id}</td>
                     <td style={{ padding: '12px' }}>
-                      <div style={{ fontWeight: '500', color: '#1e3a5f' }}>{agent.name}</div>
+                      <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{agent.name}</div>
                       <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
                         {agent.group?.join(', ')}
                       </div>
@@ -412,8 +305,8 @@ const Agents = () => {
                       <span style={{ 
                         padding: '4px 8px', 
                         borderRadius: '4px', 
-                        backgroundColor: agent.alerts_count > 0 ? '#fef3c7' : '#ecfdf5',
-                        color: agent.alerts_count > 0 ? '#92400e' : '#065f46',
+                        backgroundColor: agent.alerts_count > 0 ? 'var(--warning-bg)' : 'var(--success-bg)',
+                        color: agent.alerts_count > 0 ? 'var(--warning)' : 'var(--success)',
                         fontSize: '12px',
                         fontWeight: '500'
                       }}>
@@ -443,7 +336,7 @@ const Agents = () => {
           zIndex: 1000
         }}>
           <div style={{ 
-            backgroundColor: 'white', 
+            backgroundColor: 'var(--bg-surface)', 
             borderRadius: '8px', 
             maxWidth: '800px', 
             width: '90%', 
@@ -459,7 +352,7 @@ const Agents = () => {
                 onClick={closeAgentDetails}
                 style={{ 
                   padding: '8px 12px', 
-                  backgroundColor: '#f3f4f6', 
+                  backgroundColor: 'var(--bg-hover)', 
                   border: 'none', 
                   borderRadius: '4px', 
                   cursor: 'pointer' 
@@ -525,15 +418,15 @@ const Agents = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a5f' }}>{selectedAgent.active_events}</div>
+              <div style={{ padding: '16px', backgroundColor: 'var(--bg-elevated)', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedAgent.active_events}</div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>Active Events</div>
               </div>
-              <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ padding: '16px', backgroundColor: 'var(--bg-elevated)', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626' }}>{selectedAgent.alerts_count}</div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>Alerts</div>
               </div>
-              <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ padding: '16px', backgroundColor: 'var(--bg-elevated)', borderRadius: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ca8a04' }}>{selectedAgent.vulnerability_count}</div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>Vulnerabilities</div>
               </div>
@@ -590,7 +483,7 @@ const Agents = () => {
 
 const StatCard = ({ title, value, color, icon }) => (
   <div style={{ 
-    backgroundColor: 'white', 
+    backgroundColor: 'var(--bg-surface)', 
     padding: '20px', 
     borderRadius: '8px', 
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
@@ -598,8 +491,8 @@ const StatCard = ({ title, value, color, icon }) => (
   }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <div>
-        <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>{title}</div>
-        <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#1e3a5f' }}>{value}</div>
+        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>{title}</div>
+        <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{value}</div>
       </div>
       <div style={{ fontSize: '32px' }}>{icon}</div>
     </div>

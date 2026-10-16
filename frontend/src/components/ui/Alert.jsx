@@ -1,28 +1,90 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const Alert = ({ variant = 'default', children, className = '' }) => {
+const Alert = ({ children, variant = 'default', dismissible = false, onDismiss, icon, action, className = '', style = {} }) => {
+  const [visible, setVisible] = useState(true);
+
   const variants = {
-    default: 'bg-blue-50 border-blue-200 text-blue-800',
-    destructive: 'bg-red-50 border-red-200 text-red-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    success: 'bg-green-50 border-green-200 text-green-800'
+    default: {
+      background: 'var(--info-bg)',
+      borderColor: 'var(--info-border)',
+      iconColor: 'var(--info)',
+    },
+    destructive: {
+      background: 'var(--danger-bg)',
+      borderColor: 'var(--danger-border)',
+      iconColor: 'var(--danger)',
+    },
+    warning: {
+      background: 'var(--warning-bg)',
+      borderColor: 'var(--warning-border)',
+      iconColor: 'var(--warning)',
+    },
+    success: {
+      background: 'var(--success-bg)',
+      borderColor: 'var(--success-border)',
+      iconColor: 'var(--success)',
+    },
   };
-  
+
+  const v = variants[variant] || variants.default;
+
+  if (!visible) return null;
+
+  const handleDismiss = () => {
+    setVisible(false);
+    onDismiss?.();
+  };
+
   return (
-    <div className={`border rounded-lg p-4 ${variants[variant]} ${className}`}>
-      {children}
+    <div
+      className={className}
+      role="alert"
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '12px',
+        padding: '12px 16px',
+        borderRadius: 'var(--radius-md)',
+        border: `1px solid ${v.borderColor}`,
+        background: v.background,
+        animation: 'fadeIn 0.3s ease',
+        transition: 'all var(--transition-normal)',
+        ...style,
+      }}
+    >
+      {icon && <span style={{ flexShrink: 0, marginTop: '2px', color: v.iconColor }}>{icon}</span>}
+      <div style={{ flex: 1, fontSize: 'var(--font-size-base)', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+        {children}
+      </div>
+      {action && <div style={{ flexShrink: 0 }}>{action}</div>}
+      {dismissible && (
+        <button
+          onClick={handleDismiss}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            padding: '2px',
+            fontSize: '14px',
+            lineHeight: 1,
+            flexShrink: 0,
+            transition: 'color var(--transition-fast)',
+          }}
+          onMouseEnter={(e) => e.target.style.color = 'var(--text-primary)'}
+          onMouseLeave={(e) => e.target.style.color = 'var(--text-muted)'}
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 };
 
-const AlertDescription = ({ children, className = '' }) => {
-  return (
-    <div className={`text-sm ${className}`}>
-      {children}
-    </div>
-  );
-};
-
-Alert.Description = AlertDescription;
+Alert.Description = ({ children, className = '' }) => (
+  <p className={className} style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.5 }}>
+    {children}
+  </p>
+);
 
 export default Alert;

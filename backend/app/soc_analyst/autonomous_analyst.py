@@ -10,6 +10,8 @@ from ..log_collector.ioc_extractor import IOCExtractor, IOCPrioritizer
 from ..threat_intel.orchestrator import ThreatIntelOrchestrator
 from ..llm_client import LLMClient
 from ..utils.logger import get_logger
+import requests
+import os
 
 logger = get_logger(__name__)
 
@@ -37,6 +39,12 @@ class AutonomousSOCAnalyst:
         self.threat_intel_orchestrator = ThreatIntelOrchestrator(config)
         self.llm_client = LLMClient(config)
         
+        # Wazuh integration
+        self.wazuh_url = os.getenv("WAZUH_URL", "https://192.168.56.101")
+        self.wazuh_username = os.getenv("WAZUH_USERNAME", "wazuh-wui")
+        self.wazuh_password = os.getenv("WAZUH_PASSWORD", "wazuh-wui")
+        self.wazuh_token = None
+        
         self.investigation_state = {
             "current_phase": InvestigationPhase.PLANNING,
             "phases_completed": [],
@@ -45,6 +53,150 @@ class AutonomousSOCAnalyst:
             "risk_score": 0,
             "decisions": []
         }
+    
+    def _authenticate_wazuh(self) -> bool:
+        """Authenticate with Wazuh API"""
+        try:
+            auth_url = f"{self.wazuh_url}/security/user/authenticate?raw=true"
+            response = requests.get(
+                auth_url,
+                auth=(self.wazuh_username, self.wazuh_password),
+                verify=False,
+                timeout=10
+            )
+            if response.status_code == 200:
+                self.wazuh_token = response.text.strip()
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Wazuh authentication failed: {e}")
+            return False
+    
+    async def collect_wazuh_alerts(self, severity: str = "all", time_range: str = "24h", limit: int = 100) -> Dict[str, Any]:
+        """Collect alerts from Wazuh with severity filtering"""
+        try:
+            if not self.wazuh_token:
+                if not self._authenticate_wazuh():
+                    return {"error": "Failed to authenticate with Wazuh"}
+            
+            headers = {'Authorization': f'Bearer {self.wazuh_token}', 'Content-Type': 'application/json'}
+            
+            # Try different alert endpoints
+            alert_endpoints = [
+                'api/v4/alerts',
+                'manager/logs/alerts',
+                'alerts'
+            ]
+            
+            alerts = []
+            for endpoint in alert_endpoints:
+                try:
+                    params = {"limit": limit}
+                    if time_range:
+                        params["time_range"] = time_range
+                    
+                    url = f"{self.wazuh_url}/{endpoint}"
+                    response = requests.get(url, headers=headers, params=params, verify=False, timeout=10)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        if isinstance(data, dict) and 'data' in data:
+                            if 'affected_items' in data['data']:
+                                alerts = data['data']['affected_items']
+                                break
+                            elif 'items' in data['data']:
+                                alerts = data['data']['items']
+                                break
+                except:
+                    continue
+            
+            # Filter by severity if specified
+            if severity and severity != "all":
+                alerts = self._filter_wazuh_alerts_by_severity(alerts, severity)
+            
+            return {
+                "status": "success",
+                "alerts": alerts[:limit],
+                "total_alerts": len(alerts),
+                "severity_filter": severity,
+                "time_range": time_range
+            }
+        except Exception as e:
+            logger.error(f"Error collecting Wazuh alerts: {e}")
+            return {"error": str(e)}
+    
+    def _filter_wazuh_alerts_by_severity(self, alerts: List[Dict], severity: str) -> List[Dict]:
+        """Filter Wazuh alerts by severity level"""
+        severity_mapping = {
+            'critical': [12, 13, 14, 15],
+            'high': [10, 11],
+            'medium': [7, 8, 9],
+            'low': [1, 2, 3, 4, 5, 6]
+        }
+        
+        if severity not in severity_mapping:
+            return alerts
+        
+        severity_levels = severity_mapping[severity]
+        filtered_alerts = []
+        
+        for alert in alerts:
+            alert_severity = None
+            if 'rule' in alert and 'level' in alert['rule']:
+                alert_severity = alert['rule']['level']
+            elif 'level' in alert:
+                alert_severity = alert['level']
+            
+            if alert_severity in severity_levels:
+                filtered_alerts.append(alert)
+        
+        return filtered_alerts
+    
+    async def get_wazuh_alerts_by_severity(self, limit_per_severity: int = 20, time_range: str = "24h") -> Dict[str, Any]:
+        """Get Wazuh alerts grouped by severity level"""
+        try:
+            # Get all alerts first
+            all_alerts_result = await self.collect_wazuh_alerts("all", time_range, 1000)
+            
+            if "error" in all_alerts_result:
+                return all_alerts_result
+            
+            all_alerts = all_alerts_result.get("alerts", [])
+            
+            # Group alerts by severity
+            severity_groups = {
+                "critical": self._filter_wazuh_alerts_by_severity(all_alerts, "critical")[:limit_per_severity],
+                "high": self._filter_wazuh_alerts_by_severity(all_alerts, "high")[:limit_per_severity],
+                "medium": self._filter_wazuh_alerts_by_severity(all_alerts, "medium")[:limit_per_severity],
+                "low": self._filter_wazuh_alerts_by_severity(all_alerts, "low")[:limit_per_severity]
+            }
+            
+            return {
+                "status": "success",
+                "time_range": time_range,
+                "total_alerts": len(all_alerts),
+                "alerts_by_severity": {
+                    "critical": {
+                        "count": len(severity_groups["critical"]),
+                        "alerts": severity_groups["critical"]
+                    },
+                    "high": {
+                        "count": len(severity_groups["high"]),
+                        "alerts": severity_groups["high"]
+                    },
+                    "medium": {
+                        "count": len(severity_groups["medium"]),
+                        "alerts": severity_groups["medium"]
+                    },
+                    "low": {
+                        "count": len(severity_groups["low"]),
+                        "alerts": severity_groups["low"]
+                    }
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting Wazuh alerts by severity: {e}")
+            return {"error": str(e)}
     
     async def conduct_investigation(self, investigation_params: Dict[str, Any]) -> Dict[str, Any]:
         """Conduct a complete autonomous investigation"""
@@ -217,6 +369,30 @@ class AutonomousSOCAnalyst:
                     "error": str(e)
                 }
         
+        # Collect Wazuh alerts if available
+        try:
+            wazuh_alerts = await self.collect_wazuh_alerts(
+                severity="all",
+                time_range=f"{plan['time_range_hours']}h",
+                limit=100
+            )
+            if "error" not in wazuh_alerts:
+                evidence["evidence_data"]["wazuh_alerts"] = wazuh_alerts
+                evidence["collection_summary"]["wazuh_alerts"] = {
+                    "status": "success",
+                    "alert_count": wazuh_alerts.get("total_alerts", 0)
+                }
+                logger.info(f"Collected {wazuh_alerts.get('total_alerts', 0)} Wazuh alerts")
+                
+                # Store Wazuh alerts in investigation state for later analysis
+                self.investigation_state["wazuh_alerts"] = wazuh_alerts
+        except Exception as e:
+            logger.error(f"Error collecting Wazuh alerts: {e}")
+            evidence["collection_summary"]["wazuh_alerts"] = {
+                "status": "failed",
+                "error": str(e)
+            }
+        
         self.investigation_state["evidence"] = evidence["evidence_data"]
         
         return evidence
@@ -263,16 +439,85 @@ class AutonomousSOCAnalyst:
             ioc_result["extracted_iocs"]
         )
         
+        # Analyze Wazuh alerts if available
+        wazuh_analysis = {}
+        if "wazuh_alerts" in self.investigation_state:
+            wazuh_alerts = self.investigation_state["wazuh_alerts"]
+            wazuh_analysis = await self._analyze_wazuh_alerts(wazuh_alerts)
+        
         result = {
             "phase": InvestigationPhase.THREAT_INTEL,
             "timestamp": datetime.now().isoformat(),
             "threat_intel_analysis": threat_intel_results,
-            "high_risk_iocs": self._identify_high_risk_iocs(threat_intel_results)
+            "wazuh_alerts_analysis": wazuh_analysis,
+            "high_risk_iocs": self._identify_high_risk_iocs(threat_intel_results),
+            "high_risk_wazuh_alerts": self._identify_high_risk_wazuh_alerts(wazuh_analysis)
         }
         
         self.investigation_state["findings"]["threat_intel"] = threat_intel_results
+        self.investigation_state["findings"]["wazuh_analysis"] = wazuh_analysis
         
         return result
+    
+    async def _analyze_wazuh_alerts(self, wazuh_alerts: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze Wazuh alerts for threat intelligence"""
+        try:
+            alerts = wazuh_alerts.get("alerts", [])
+            
+            # Get alerts by severity
+            alerts_by_severity = await self.get_wazuh_alerts_by_severity(
+                limit_per_severity=20,
+                time_range="24h"
+            )
+            
+            # Analyze critical and high alerts
+            critical_alerts = alerts_by_severity.get("alerts_by_severity", {}).get("critical", {}).get("alerts", [])
+            high_alerts = alerts_by_severity.get("alerts_by_severity", {}).get("high", {}).get("alerts", [])
+            
+            return {
+                "total_alerts": len(alerts),
+                "critical_alerts_count": len(critical_alerts),
+                "high_alerts_count": len(high_alerts),
+                "alerts_by_severity": alerts_by_severity.get("alerts_by_severity", {}),
+                "top_threats": self._identify_top_wazuh_threats(critical_alerts + high_alerts)
+            }
+        except Exception as e:
+            logger.error(f"Error analyzing Wazuh alerts: {e}")
+            return {"error": str(e)}
+    
+    def _identify_top_wazuh_threats(self, high_priority_alerts: List[Dict]) -> List[Dict]:
+        """Identify top threats from Wazuh alerts"""
+        top_threats = []
+        
+        for alert in high_priority_alerts[:10]:  # Top 10 most critical
+            threat_info = {
+                "rule_id": alert.get("rule", {}).get("id", "unknown"),
+                "rule_level": alert.get("rule", {}).get("level", 0),
+                "description": alert.get("rule", {}).get("description", "No description"),
+                "agent": alert.get("agent", {}).get("name", "unknown"),
+                "timestamp": alert.get("timestamp", "unknown"),
+                "full_log": alert.get("full_log", "")
+            }
+            top_threats.append(threat_info)
+        
+        return top_threats
+    
+    def _identify_high_risk_wazuh_alerts(self, wazuh_analysis: Dict[str, Any]) -> List[Dict]:
+        """Identify high-risk Wazuh alerts"""
+        high_risk_alerts = []
+        
+        if "alerts_by_severity" in wazuh_analysis:
+            critical_alerts = wazuh_analysis["alerts_by_severity"].get("critical", {}).get("alerts", [])
+            high_alerts = wazuh_analysis["alerts_by_severity"].get("high", {}).get("alerts", [])
+            
+            for alert in critical_alerts + high_alerts:
+                high_risk_alerts.append({
+                    "alert": alert,
+                    "severity": "critical" if alert in critical_alerts else "high",
+                    "risk_level": "critical" if alert in critical_alerts else "high"
+                })
+        
+        return high_risk_alerts
     
     def _identify_high_risk_iocs(self, threat_intel_results: Dict[str, Any]) -> List[Dict]:
         """Identify high-risk IOCs from threat intelligence results"""
@@ -324,6 +569,7 @@ class AutonomousSOCAnalyst:
         result = {
             "phase": InvestigationPhase.CORRELATION,
             "timestamp": datetime.now().isoformat(),
+            "threat_intel_analysis": threat_intel_result["threat_intel_analysis"],
             "correlation_analysis": correlation_analysis,
             "llm_insights": llm_correlation,
             "identified_patterns": self._identify_patterns(correlation_analysis)
@@ -611,4 +857,3 @@ class AutonomousSOCAnalyst:
     async def close(self):
         """Close all connections"""
         await self.threat_intel_orchestrator.close()
-        await self.llm_client.close()

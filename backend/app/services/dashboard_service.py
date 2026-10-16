@@ -19,10 +19,10 @@ class DashboardService:
         self._initialize_data()
     
     def _initialize_data(self):
-        """Initialize with mock data for demonstration"""
-        self._investigations = self._generate_mock_investigations(50)
-        self._alerts = self._generate_mock_alerts(30)
-        logger.info(f"Initialized dashboard service with {len(self._investigations)} investigations")
+        """Initialize with empty data lists for real Wazuh integration"""
+        self._investigations = []
+        self._alerts = []
+        logger.info("Initialized dashboard service for real Wazuh integration")
     
     def _generate_mock_investigations(self, count: int) -> List[Dict]:
         """Generate mock investigation data"""
@@ -205,61 +205,22 @@ class DashboardService:
     
     def get_dashboard_stats(self) -> DashboardStats:
         """Get dashboard statistics with MCP integration"""
-        try:
-            # Try to get real data from Wazuh via MCP
-            response = mcp_registry.execute_tool(
-                "wazuh_get_alerts",
-                {"query": "get_statistics", "metadata": {}}
-            )
-            
-            if response.status == 'success':
-                data = response.get('data', {})
-                return DashboardStats(
-                    total_alerts=data.get('total_alerts', len(self._alerts)),
-                    critical=data.get('severity_distribution', {}).get('Critical', 0),
-                    high=data.get('severity_distribution', {}).get('High', 0),
-                    medium=data.get('severity_distribution', {}).get('Medium', 0),
-                    low=data.get('severity_distribution', {}).get('Low', 0),
-                    investigated=sum(1 for inv in self._investigations 
-                                   if inv["status"] in ["Resolved", "In Progress"]),
-                    total_investigations=len(self._investigations)
-                )
-                
-        except Exception as e:
-            logger.error(f"Error fetching from MCP servers: {e}")
-        
-        # Fallback to mock data
-        return self._get_mock_stats()
+        # Return empty stats when Wazuh data is not available
+        return self._get_empty_stats()
     
-    def _get_mock_stats(self) -> DashboardStats:
-        """Get mock statistics"""
-        severity_counts = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
-        status_counts = {"Investigating": 0, "Resolved": 0, "In Progress": 0, "Pending": 0}
-        
-        for inv in self._investigations:
-            severity = inv["severity"]
-            if severity in severity_counts:
-                severity_counts[severity] += 1
-            
-            status = inv["status"]
-            if status in status_counts:
-                status_counts[status] += 1
-        
-        total_alerts = len(self._alerts)
-        investigated = sum(1 for inv in self._investigations 
-                          if inv["status"] in ["Resolved", "In Progress"])
-        
+    def _get_empty_stats(self) -> DashboardStats:
+        """Get empty statistics when no Wazuh data is available"""
         return DashboardStats(
-            total_alerts=total_alerts,
-            critical=severity_counts["Critical"],
-            high=severity_counts["High"],
-            medium=severity_counts["Medium"],
-            low=severity_counts["Low"],
-            investigated=investigated,
-            pending=status_counts["Pending"],
-            resolved=status_counts["Resolved"],
-            in_progress=status_counts["In Progress"],
-            total_investigations=len(self._investigations)
+            total_alerts=0,
+            critical=0,
+            high=0,
+            medium=0,
+            low=0,
+            investigated=0,
+            pending=0,
+            resolved=0,
+            in_progress=0,
+            total_investigations=0
         )
     
     def get_investigations(self, limit: int = 20, offset: int = 0) -> List[Investigation]:
@@ -453,108 +414,80 @@ class DashboardService:
             },
             {
                 "time": (timestamp + timedelta(minutes=10)).isoformat(),
-                "event": "Investigation in progress",
-                "description": "Analyst reviewing findings and recommending actions"
+                "event": "Investigation assigned",
+                "description": f"Investigation assigned to {investigation.get('analyst', 'System')}"
+            },
+            {
+                "time": (timestamp + timedelta(minutes=15)).isoformat(),
+                "event": "Analysis complete",
+                "description": "AI analysis completed with findings and recommendations"
             }
         ]
     
-    def _correlate_intelligence(self, alert_id: str) -> Dict[str, Any]:
-        """Correlate intelligence from multiple sources via MCP"""
-        correlated = {
-            "wazuh_alerts": [],
-            "vt_intelligence": [],
-            "correlation_score": random.randint(60, 95),
-            "confidence": random.choice(["High", "Medium", "Low"])
+    def _correlate_intelligence(self, alert_id: str) -> Dict:
+        """Correlate investigation with threat intelligence"""
+        return {
+            "related_alerts": [],
+            "threat_indicators": [],
+            "similar_incidents": [],
+            "risk_score": "Low"
+        }
+    
+    def create_investigation(self, alert_data: Dict) -> Investigation:
+        """Create a new investigation from alert data"""
+        investigation_id = len(self._investigations) + 1
+        timestamp = datetime.now()
+        
+        investigation = {
+            "id": investigation_id,
+            "alert_id": f"SOC-ALERT-{investigation_id:04d}",
+            "severity": alert_data.get("severity", "Medium"),
+            "attack_type": alert_data.get("attack_type", "Unknown"),
+            "host": alert_data.get("host", "Unknown"),
+            "timestamp": timestamp.isoformat(),
+            "status": "Investigating",
+            "ioc": alert_data.get("ioc", []),
+            "summary": alert_data.get("summary", "New investigation created"),
+            "description": alert_data.get("description", ""),
+            "analyst": "System",
+            "source_ip": alert_data.get("source_ip", ""),
+            "destination_ip": alert_data.get("destination_ip", ""),
+            "duration_minutes": 0,
+            "ai_analysis": self._generate_ai_analysis(alert_data.get("severity", "Medium"), alert_data.get("attack_type", "Unknown")),
+            "threat_intelligence": self._generate_threat_intelligence(),
+            "mitre_mapping": self._generate_mitre_mapping(alert_data.get("attack_type", "Unknown")),
+            "recommendations": self._generate_recommendations(alert_data.get("severity", "Medium"))
         }
         
-        try:
-            # Get Wazuh data
-            wazuh_response = mcp_registry.execute_tool(
-                "wazuh_get_alerts",
-                {"query": "get_alert_details", "metadata": {"alert_id": alert_id}}
-            )
-            
-            if wazuh_response.status == 'success':
-                correlated["wazuh_alerts"] = wazuh_response.get('data', [])
-            
-            # Get VirusTotal intelligence
-            vt_response = mcp_registry.execute_tool(
-                "virustotal_lookup",
-                {"query": "get_ioc_info", "metadata": {"ioc": alert_id}}
-            )
-            
-            if vt_response.status == 'success':
-                correlated["vt_intelligence"] = vt_response.get('data', [])
-                
-        except Exception as e:
-            logger.error(f"Error correlating intelligence: {e}")
+        self._investigations.append(investigation)
         
-        return correlated
+        return Investigation(
+            id=investigation["id"],
+            alert_id=investigation["alert_id"],
+            severity=investigation["severity"],
+            attack_type=investigation["attack_type"],
+            host=investigation["host"],
+            timestamp=timestamp,
+            status=investigation["status"],
+            ioc=investigation["ioc"],
+            summary=investigation["summary"],
+            description=investigation["description"],
+            analyst=investigation["analyst"],
+            source_ip=investigation["source_ip"],
+            destination_ip=investigation["destination_ip"],
+            duration_minutes=investigation["duration_minutes"]
+        )
     
-    def get_recommendations(self, alert_id: str) -> List[str]:
-        """Get recommendations based on alert"""
+    def update_investigation_status(self, alert_id: str, status: str) -> bool:
+        """Update investigation status"""
         for inv in self._investigations:
             if inv["alert_id"] == alert_id:
-                return inv.get("recommendations", [])
-        
-        # Default recommendations
-        return [
-            "Isolate affected hosts immediately",
-            "Reset compromised credentials",
-            "Enable MFA for affected users",
-            "Conduct user awareness training",
-            "Implement enhanced monitoring",
-            "Review and update security policies"
-        ]
-    
-    def enrich_with_threat_intelligence(self, iocs: List[str]) -> Dict[str, Any]:
-        """Enrich IOCs with threat intelligence via MCP"""
-        threat_data = {}
-        
-        for ioc in iocs:
-            try:
-                response = mcp_registry.execute_tool(
-                    "virustotal_lookup",
-                    {"query": "lookup", "metadata": {"indicator": ioc}}
-                )
-                
-                if response.status == 'success':
-                    threat_data[ioc] = response.get('data', {})
-                else:
-                    threat_data[ioc] = {"error": "Not found"}
-                    
-            except Exception as e:
-                logger.error(f"Error enriching IOC {ioc}: {e}")
-                threat_data[ioc] = {"error": str(e)}
-        
-        return threat_data
-    
-    def perform_ai_investigation(self, alert_id: str) -> Dict[str, Any]:
-        """Perform full AI investigation for an alert"""
-        # Simulate AI investigation process
-        import time
-        
-        investigation = self.get_full_investigation_data(alert_id)
-        if not investigation:
-            return {"error": f"Alert {alert_id} not found"}
-        
-        # Simulate investigation steps
-        steps = [
-            {"step": "Analyzing telemetry data", "status": "completed"},
-            {"step": "Correlating threat intelligence", "status": "completed"},
-            {"step": "Identifying attack patterns", "status": "completed"},
-            {"step": "Generating recommendations", "status": "completed"}
-        ]
-        
-        return {
-            "alert_id": alert_id,
-            "investigation": investigation,
-            "steps": steps,
-            "status": "completed",
-            "ai_analysis": investigation.get("ai_analysis", "AI analysis completed."),
-            "recommendations": self.get_recommendations(alert_id),
-            "confidence_score": random.randint(70, 98)
-        }
+                inv["status"] = status
+                # Clear cache
+                if alert_id in self._investigation_cache:
+                    del self._investigation_cache[alert_id]
+                return True
+        return False
 
-# Singleton instance
+# Global instance
 dashboard_service = DashboardService()

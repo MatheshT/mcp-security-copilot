@@ -257,6 +257,8 @@ class PredictiveSecurityEngine:
         
         return {
             "overall_score": posture_score,
+            "threat_level": "Low" if posture_score > 80 else "Medium" if posture_score > 60 else "High",
+            "vulnerability_count": sum(severity_distribution.values()),
             "grade": self._get_security_grade(posture_score),
             "severity_distribution": severity_distribution,
             "response_time_metrics": response_time_metrics,
@@ -269,6 +271,8 @@ class PredictiveSecurityEngine:
         """Return default posture score when no data is available"""
         return {
             "overall_score": 75.0,
+            "threat_level": "Medium",
+            "vulnerability_count": 0,
             "grade": "B",
             "severity_distribution": {
                 "critical": 0,

@@ -119,15 +119,22 @@ class ThreatActorPersonaEngine:
         # Analyze tools and techniques
         tools = attack_data.get("tools", [])
         techniques = attack_data.get("techniques", [])
+        tools_str = str(tools).lower()
+        tech_str = str(techniques).lower()
         
-        if "mimikatz" in tools or "credential" in str(techniques).lower():
+        if "mimikatz" in tools_str or "credential" in tools_str or "credential" in tech_str:
             patterns.append("credential_harvesting")
+            patterns.append("credential_theft")
         
-        if "lateral" in str(techniques).lower() or "psexec" in tools:
+        if "lateral" in tech_str or "lateral" in tools_str or "psexec" in tools_str:
             patterns.append("lateral_movement")
         
         if "phishing" in str(attack_data).lower():
             patterns.append("social_engineering")
+            patterns.append("phishing")
+        
+        if "persistence" in tech_str or "persistence" in tools_str:
+            patterns.append("persistence")
         
         if "ransomware" in str(attack_data).lower() or "encryption" in str(attack_data).lower():
             patterns.append("data_encryption")
@@ -135,7 +142,7 @@ class ThreatActorPersonaEngine:
         if "zero_day" in str(attack_data).lower() or "exploit" in str(attack_data).lower():
             patterns.append("exploit_development")
         
-        return patterns
+        return list(set(patterns))
     
     def _assess_technical_sophistication(self, attack_data: Dict) -> Dict[str, Any]:
         """Assess the technical sophistication of the attacker"""
@@ -254,15 +261,19 @@ class ThreatActorPersonaEngine:
             # Check pattern matching
             actor_preferences = actor_profile["preferences"]
             for pattern in patterns:
-                if any(pref in pattern.lower() for pref in actor_preferences):
-                    confidence += 25
+                for pref in actor_preferences:
+                    pref_clean = pref.lower().replace(" ", "_").replace("-", "_")
+                    patt_clean = pattern.lower().replace(" ", "_").replace("-", "_")
+                    if pref_clean in patt_clean or patt_clean in pref_clean:
+                        confidence += 25
+                        break
             
             # Check sophistication matching
-            if sophistication["sophistication_level"] == "Advanced" and actor_profile["risk_level"] == "Critical":
+            if sophistication.get("sophistication_level") in ["Advanced", "Expert"] and actor_profile.get("risk_level") == "Critical":
                 confidence += 30
             
             # Check attack style
-            if "stealthy" in actor_profile["attack_style"].lower() and "stealth" in str(patterns).lower():
+            if "stealthy" in actor_profile.get("attack_style", "").lower() and any(p in str(patterns).lower() for p in ["stealth", "persistence", "lateral_movement"]):
                 confidence += 20
             
             confidence = min(confidence, 95)
@@ -271,6 +282,7 @@ class ThreatActorPersonaEngine:
                 highest_confidence = confidence
                 best_match = {
                     "actor_id": actor_id,
+                    "name": actor_profile["name"],
                     "actor_name": actor_profile["name"],
                     "confidence": confidence,
                     "origin": actor_profile["origin"]
@@ -281,6 +293,7 @@ class ThreatActorPersonaEngine:
         else:
             return {
                 "actor_id": "Unknown",
+                "name": "Unknown Threat Actor",
                 "actor_name": "Unknown Threat Actor",
                 "confidence": highest_confidence,
                 "origin": "Unknown"
@@ -299,6 +312,7 @@ class ThreatActorPersonaEngine:
         behavioral_profile = self._generate_behavioral_profile(personality_traits, motivation)
         
         return {
+            "actor_identification": actor_match,
             "personality_traits": personality_traits,
             "motivation": motivation,
             "behavioral_profile": behavioral_profile,
@@ -314,7 +328,9 @@ class ThreatActorPersonaEngine:
         traits = {}
         
         # Patience
-        if "lateral_movement" in patterns and temporal["off_hours_activity"] > temporal["work_hours_activity"]:
+        off_hours = 1 if temporal.get("off_hours_activity") else 0
+        work_hours = 1 if temporal.get("work_hours_activity") else 0
+        if "lateral_movement" in patterns and off_hours > work_hours:
             traits["patience"] = "High"
         else:
             traits["patience"] = "Medium"
@@ -334,7 +350,7 @@ class ThreatActorPersonaEngine:
             traits["sophistication"] = "Low"
         
         # Stealth
-        if temporal["pattern"] == "off_hours" and "lateral_movement" in patterns:
+        if temporal.get("pattern") == "off_hours" and "lateral_movement" in patterns:
             traits["stealth"] = "High"
         else:
             traits["stealth"] = "Medium"
@@ -344,6 +360,12 @@ class ThreatActorPersonaEngine:
             traits["adaptability"] = "High"
         else:
             traits["adaptability"] = "Medium"
+        
+        # Persistence
+        if "persistence" in patterns or "credential_harvesting" in patterns:
+            traits["persistence"] = "High"
+        else:
+            traits["persistence"] = "Medium"
         
         return traits
     
@@ -493,10 +515,11 @@ class ThreatActorPersonaEngine:
             ])
         
         # Based on personality
-        if persona["personality_traits"]["persistence"] == "High":
+        traits = persona.get("personality_traits", {})
+        if traits.get("persistence") == "High":
             predictions.append("Will maintain long-term access")
         
-        if persona["personality_traits"]["adaptability"] == "High":
+        if traits.get("adaptability") == "High":
             predictions.append("Will adapt to security measures")
         
         return {
@@ -590,7 +613,8 @@ class ThreatActorPersonaEngine:
         """Identify gaps in intelligence about the actor"""
         gaps = []
         
-        if persona["actor_identification"]["actor_id"] == "Unknown":
+        actor_id = persona.get("actor_identification", {}).get("actor_id", "Unknown")
+        if actor_id == "Unknown":
             gaps.append("Actor identification and attribution")
         
         if persona["motivation"]["confidence"] < 0.7:

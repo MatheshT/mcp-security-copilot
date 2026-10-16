@@ -36,26 +36,93 @@ class ToolPlanner:
         commands: Dict[str, List[str]] = {}
         reasoning = ""
 
-        # 1. Direct LLM response - No tools needed for general concepts, explanations, policies
-        if query_type in ['general_question', 'tool_explanation', 'conversational', 'policy_review'] or intent in ['general_question', 'tool_explanation', 'conversational', 'policy_review']:
-            # Exception: If the query explicitly asks to check a specific IP/Hash/Domain/URL despite being categorized
+        if re.search(r'\b(?:collect|coolect|gather|retrieve|fetch|pull)\b.*\blogs?\b', query_lower):
+            return {
+                "required_tools": ["WindowsLogs"],
+                "tool_commands": {
+                    "WindowsLogs": [
+                        "get_security_events",
+                        "get_system_events",
+                        "get_application_events",
+                    ]
+                },
+                "reasoning": "Log collection requested. Retrieving real Windows security, system, and application events.",
+            }
+
+        if re.search(r'\b(?:start|begin|run)\s+(?:an?\s+)?(?:security\s+)?invest(?:i?gation)\b', query_lower):
+            return {
+                "required_tools": ["Wazuh", "WindowsLogs"],
+                "tool_commands": {
+                    "Wazuh": ["get_alerts", "get_agents", "get_statistics"],
+                    "WindowsLogs": [
+                        "get_security_events",
+                        "get_system_events",
+                        "get_application_events",
+                    ],
+                },
+                "reasoning": "Investigation requested. Collecting current Wazuh alerts and agent status alongside endpoint event logs.",
+            }
+
+        # SOAR Active Defense / Containment Intent
+        if any(k in query_lower for k in ['block', 'isolate', 'quarantine', 'lockdown', 'soar', 'contain', 'playbook']):
+            soar_cmd = "block_ip" if "block" in query_lower else ("isolate_host" if ("isolate" in query_lower or "quarantine" in query_lower) else "run_playbook")
+            if entities.get('ip') and "block" in query_lower:
+                soar_cmd = f"block_ip {entities['ip']}"
+            elif "isolate" in query_lower or "quarantine" in query_lower:
+                target_host = entities.get('host') or entities.get('ip')
+                if not target_host:
+                    match = re.search(r'(?:host|endpoint|workstation|machine)\s+([A-Za-z0-9_\-]+)', query, re.I)
+                    if match:
+                        target_host = match.group(1)
+                if target_host:
+                    soar_cmd = f"isolate_host {target_host}"
+            return {
+                "required_tools": ["SOAR"],
+                "tool_commands": {"SOAR": [soar_cmd]},
+                "reasoning": "Active defense & automated containment intent detected. Executing SOAR countermeasure."
+            }
+
+        # Wazuh Agents Query
+        if any(k in query_lower for k in ['agent', 'connected', 'endpoints', 'how many agent', 'ethana agent', 'agents check', 'agent ethana', 'agents iruku', 'agents irruku', 'agents status']):
+            return {
+                "required_tools": ["Wazuh"],
+                "tool_commands": {"Wazuh": ["get_agents", "get_statistics"]},
+                "reasoning": "Wazuh fleet agent status query detected. Retrieving connected agent telemetry."
+            }
+
+        # Wazuh Alerts Query
+        if any(k in query_lower for k in ['alert', 'alerts', 'security alert', 'check alert', 'alerts check', 'ethana alert', 'recent alert', 'alert iruku', 'alerts irruku', 'alert check pannu', 'alerts kaatu', 'alert kaatu']):
+            return {
+                "required_tools": ["Wazuh"],
+                "tool_commands": {"Wazuh": ["get_alerts", "get_statistics"]},
+                "reasoning": "Real Wazuh security alerts query detected. Retrieving live SIEM alerts and telemetry."
+            }
+
+        # 1. Direct LLM response - No tools needed ONLY for pure conceptual, conversational questions without security entities
+        security_keywords = ['alert', 'agent', 'wazuh', 'endpoint', 'threat', 'vulnerab', 'cve', 'log', 'block', 'isolate', 'quarantine', 'investig', 'ip', 'hash', 'status', 'scan', 'incident', 'event', 'mitre', 'pannu', 'ethana', 'iruku', 'irruku', 'kaatu']
+        has_security_topic = any(k in query_lower for k in security_keywords)
+
+        if not has_security_topic and (query_type in ['general_question', 'tool_explanation', 'conversational', 'policy_review'] or intent in ['general_question', 'tool_explanation', 'conversational', 'policy_review']):
             if not (entities.get('ip') or entities.get('hash') or entities.get('url') or entities.get('domain')):
                 return {
                     "required_tools": [],
                     "tool_commands": {},
-                    "reasoning": "Query is a general question or concept explanation. Answering directly using AI LLM knowledge without external tool calls."
+                    "reasoning": "Query is a general concept explanation. Answering directly using AI knowledge without external tool calls."
                 }
 
         # 2. IOC Lookup Intent
-        if query_type == 'ioc_lookup' or intent == 'ioc_lookup' or any(k in query_lower for k in ['check ip', 'check hash', 'check url', 'check domain', 'vt', 'virustotal']):
+        if query_type == 'ioc_lookup' or intent == 'ioc_lookup' or any(k in query_lower for k in ['check ip', 'check hash', 'check url', 'check domain', 'vt', 'virustotal', 'investigate ip']):
             if entities.get('ip'):
-                tools.append('VirusTotal')
+                tools.extend(['VirusTotal', 'AbuseIPDB', 'Wazuh'])
                 commands['VirusTotal'] = [f"check_ip {entities['ip']}"]
-                reasoning = f"IOC lookup intent detected. Calling VirusTotal for IP {entities['ip']}."
+                commands['AbuseIPDB'] = [f"check {entities['ip']}"]
+                commands['Wazuh'] = ["get_alerts"]
+                reasoning = f"IOC lookup intent detected. Calling VirusTotal, AbuseIPDB, and Wazuh for IP {entities['ip']}."
             elif entities.get('hash'):
-                tools.append('VirusTotal')
+                tools.extend(['VirusTotal', 'AlienVault OTX'])
                 commands['VirusTotal'] = [f"check_hash {entities['hash']}"]
-                reasoning = f"IOC lookup intent detected. Calling VirusTotal for file hash {entities['hash']}."
+                commands['AlienVault OTX'] = [f"check {entities['hash']}"]
+                reasoning = f"IOC lookup intent detected. Calling VirusTotal and AlienVault for file hash {entities['hash']}."
             elif entities.get('url'):
                 tools.append('VirusTotal')
                 commands['VirusTotal'] = [f"check_url {entities['url']}"]
@@ -78,32 +145,20 @@ class ToolPlanner:
         # 3. Incident Investigation Intent
         if query_type == 'incident_investigation' or intent == 'investigate_alert' or any(k in query_lower for k in ['alert', 'investigate', 'incident', 'compromise', 'triage']):
             tools.append('Wazuh')
-            commands['Wazuh'] = ["get_alerts"]
+            commands['Wazuh'] = ["get_alerts", "get_statistics"]
             
-            # VirusTotal enrichment if IP/Hash/Domain exists or will be extracted from alert telemetry
-            tools.append('VirusTotal')
+            # Enrich indicators if present
             if entities.get('ip'):
+                tools.extend(['VirusTotal', 'MISP', 'Shodan', 'AbuseIPDB'])
                 commands['VirusTotal'] = [f"check_ip {entities['ip']}"]
-            elif entities.get('hash'):
-                commands['VirusTotal'] = [f"check_hash {entities['hash']}"]
-            else:
-                commands['VirusTotal'] = ["check_ip 185.220.101.45"]
-
-            # Add MISP for threat actor attribution
-            tools.append('MISP')
-            if entities.get('ip'):
                 commands['MISP'] = [f"search {entities['ip']}"]
-            else:
-                commands['MISP'] = ["search 185.220.101.45"]
-
-            # Add Shodan for infrastructure intelligence
-            tools.append('Shodan')
-            if entities.get('ip'):
                 commands['Shodan'] = [f"search {entities['ip']}"]
-            else:
-                commands['Shodan'] = ["search 185.220.101.45"]
+                commands['AbuseIPDB'] = [f"check {entities['ip']}"]
+            elif entities.get('hash'):
+                tools.append('VirusTotal')
+                commands['VirusTotal'] = [f"check_hash {entities['hash']}"]
 
-            reasoning = "Incident investigation intent detected. Querying Wazuh SIEM telemetry and enriching with VirusTotal, MISP threat intelligence, and Shodan OSINT."
+            reasoning = "Incident investigation intent detected. Querying Wazuh SIEM telemetry and enriching with VirusTotal, MISP, and Shodan."
 
             return {
                 "required_tools": tools,
@@ -113,10 +168,11 @@ class ToolPlanner:
 
         # 4. Threat Hunting Intent
         if query_type == 'threat_hunting' or intent == 'threat_hunting' or 'hunt' in query_lower:
-            tools.extend(['Wazuh', 'VirusTotal'])
-            commands['Wazuh'] = ["get_active_events"]
-            ip = entities.get('ip') or '185.220.101.45'
-            commands['VirusTotal'] = [f"check_ip {ip}"]
+            tools.append('Wazuh')
+            commands['Wazuh'] = ["get_active_events", "get_alerts"]
+            if entities.get('ip'):
+                tools.append('VirusTotal')
+                commands['VirusTotal'] = [f"check_ip {entities['ip']}"]
             reasoning = "Threat hunting intent detected. Querying active telemetry events and correlating IOC indicators."
 
             return {
@@ -199,7 +255,11 @@ class ToolPlanner:
         # 12. Security Posture Intent
         if query_type == 'security_posture' or intent == 'security_posture' or any(k in query_lower for k in ['security posture', 'overall security', 'security health']):
             tools.extend(['Wazuh', 'VirusTotal'])
-            commands['Wazuh'] = ["get_alerts"]
+            # Use get_agents for agent-related queries, get_alerts for general security posture
+            if any(k in query_lower for k in ['agent', 'connected', 'wazuh']):
+                commands['Wazuh'] = ["get_agents", "get_statistics"]
+            else:
+                commands['Wazuh'] = ["get_alerts"]
             commands['VirusTotal'] = ["check_ip 185.220.101.45"]
             reasoning = "Security posture assessment intent detected. Analyzing overall security health across all telemetry sources."
             return {

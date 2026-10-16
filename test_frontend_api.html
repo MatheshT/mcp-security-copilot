@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Wazuh API Connection</title>
+</head>
+<body>
+    <h1>Testing Wazuh API Connection</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8003';
+        
+        async function testWazuhAPI() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing Wazuh API connection...</p>';
+            
+            try {
+                // Test agents endpoint
+                const agentsResponse = await fetch(`${API_BASE_URL}/api/detection/wazuh/agents`);
+                const agentsData = await agentsResponse.json();
+                
+                resultsDiv.innerHTML += `
+                    <h2>✅ Agents API (Status: ${agentsResponse.status})</h2>
+                    <pre>${JSON.stringify(agentsData, null, 2)}</pre>
+                `;
+                
+                // Test alerts endpoint
+                const alertsResponse = await fetch(`${API_BASE_URL}/api/detection/wazuh/alerts`);
+                const alertsData = await alertsResponse.json();
+                
+                resultsDiv.innerHTML += `
+                    <h2>✅ Alerts API (Status: ${alertsResponse.status})</h2>
+                    <p>Total alerts: ${alertsData.alerts ? alertsData.alerts.length : 0}</p>
+                    <pre>${JSON.stringify(alertsData.alerts ? alertsData.alerts.slice(0, 2) : [], null, 2)}</pre>
+                `;
+                
+                // Test statistics endpoint
+                const statsResponse = await fetch(`${API_BASE_URL}/api/detection/wazuh/statistics`);
+                const statsData = await statsResponse.json();
+                
+                resultsDiv.innerHTML += `
+                    <h2>✅ Statistics API (Status: ${statsResponse.status})</h2>
+                    <pre>${JSON.stringify(statsData, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<h2>❌ Error: ${error.message}</h2>`;
+            }
+        }
+        
+        testWazuhAPI();
+    </script>
+</body>
+</html>

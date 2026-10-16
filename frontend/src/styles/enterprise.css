@@ -408,8 +408,8 @@
 }
 
 .action-badge {
-  background: #fff3e0;
-  color: #e65100;
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
 }
 
 .type-badge {

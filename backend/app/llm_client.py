@@ -7,11 +7,12 @@ from .llm_intent_parser import intent_parser
 
 
 class LLMClient:
-    def __init__(self):
-        self.provider = os.getenv('LLM_PROVIDER', 'free').lower()
-        self.ollama_url = os.getenv('OLLAMA_URL', 'http://localhost:11434')
-        self.openai_api_key = os.getenv('OPENAI_API_KEY')
-        self.model = os.getenv('LLM_MODEL', 'llama3')
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        runtime_config = config or {}
+        self.provider = str(runtime_config.get('llm_provider') or os.getenv('LLM_PROVIDER', 'free')).lower()
+        self.ollama_url = runtime_config.get('ollama_url') or os.getenv('OLLAMA_URL', 'http://localhost:11434')
+        self.openai_api_key = runtime_config.get('openai_api_key') or os.getenv('OPENAI_API_KEY')
+        self.model = runtime_config.get('llm_model') or os.getenv('LLM_MODEL', 'llama3')
         self.tool_planner = ToolPlanner()
 
     # =========================================================================
@@ -305,6 +306,15 @@ Use clear headings (**Title**), markdown bullet points, and actionable insights.
             )
 
         if 'wazuh' in q:
+            # Check if we have actual Wazuh data from tool execution
+            wazuh_data = investigation_data.get('wazuh_data', {})
+            agents_data = investigation_data.get('agents', {})
+            
+            # If we have actual Wazuh data, don't return generic overview
+            if wazuh_data or agents_data:
+                # Let the orchestrator handle the specific response
+                return ""
+            
             return (
                 "**Wazuh SIEM Overview**\n\n"
                 "**Wazuh** is a free, open-source enterprise security monitoring and SIEM platform. It provides unified XDR (Extended Detection and Response) and SIEM capabilities across cloud, container, and on-premise environments.\n\n"
