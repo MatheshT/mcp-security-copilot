@@ -832,7 +832,7 @@ const ChatInterface = () => {
 
   /* ─── Robust Multi-Endpoint Query Execution ─────────────── */
   const executeQuery = useCallback(async (questionText) => {
-    const question = (questionText || input).trim();
+    const question = (typeof questionText === 'string' && questionText.trim()) ? questionText.trim() : input.trim();
     if (!question || loading) return;
 
     cyberAudio.playWarp();
@@ -850,38 +850,49 @@ const ChatInterface = () => {
     try {
       let data = null;
 
-      // Try multiple endpoint paths with timeout for maximum reliability
-      const endpoints = [
-        getApiUrl('/api/investigate'),
-        '/api/investigate',
-        getApiUrl('/api/chat'),
-        '/api/chat'
-      ];
+      // Try primary API investigate endpoint with clean 5s timeout
+      const primaryUrl = getApiUrl('/api/investigate');
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      for (const endpoint of endpoints) {
+        const res = await fetch(primaryUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: question,
+            message: question,
+            model: selectedModel,
+            context: messages.slice(-6).map(m => ({ role: m.role, content: m.text }))
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {
+        // Fallback: try /api/chat with fast 2.5s timeout
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 7000);
-
-          const res = await fetch(endpoint, {
+          const controller2 = new AbortController();
+          const timeoutId2 = setTimeout(() => controller2.abort(), 2500);
+          const res2 = await fetch(getApiUrl('/api/chat'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               query: question,
               message: question,
-              model: selectedModel,
-              context: messages.slice(-6).map(m => ({ role: m.role, content: m.text }))
+              model: selectedModel
             }),
-            signal: controller.signal
+            signal: controller2.signal
           });
-          clearTimeout(timeoutId);
-
-          if (res.ok) {
-            data = await res.json();
-            break;
+          clearTimeout(timeoutId2);
+          if (res2.ok) {
+            data = await res2.json();
           }
         } catch {
-          // Continue to next endpoint fallback
+          // Direct fallback below
         }
       }
 
@@ -940,7 +951,7 @@ const ChatInterface = () => {
   }, [executeQuery]);
 
   const handleKeyDown = useCallback((e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       executeQuery();
     }
@@ -1430,7 +1441,7 @@ const ChatInterface = () => {
           color: '#64748b',
           padding: '0 2px'
         }}>
-          <span>⌨️ Press Ctrl+Enter to dispatch • 16 Active MCP Tools • Model: {currentModel?.label}</span>
+          <span>⌨️ Press Enter to send, Shift+Enter for new line • 16 Active MCP Tools • Model: {currentModel?.label}</span>
           <span>{filteredMessages.filter(m => m.role === 'assistant').length} AI Investigations</span>
         </div>
       </div>

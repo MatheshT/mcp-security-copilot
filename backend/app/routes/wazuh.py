@@ -26,7 +26,7 @@ DEFAULT_WAZUH_VM = "Wazuh v4.14.7 OVA"
 
 # In-memory cache for fast UI updates
 _alerts_cache = {"timestamp": 0.0, "alerts": []}
-CACHE_TTL_SECONDS = 5.0
+CACHE_TTL_SECONDS = 30.0
 
 
 def _vbox_run_cmd_in_vm(vm_name: str, cmd: str, args: List[str]) -> str:
@@ -39,7 +39,7 @@ def _vbox_run_cmd_in_vm(vm_name: str, cmd: str, args: List[str]) -> str:
          "--username", "root",
          "--password", "wazuh",
          "--"] + args,
-        capture_output=True, text=True, timeout=15
+        capture_output=True, text=True, timeout=5
     )
     return result.stdout or ""
 
