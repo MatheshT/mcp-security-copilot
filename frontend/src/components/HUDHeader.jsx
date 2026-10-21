@@ -12,8 +12,9 @@ const TICKER_ITEMS = [
 ];
 
 const MODULE_OPTIONS = [
-  { id: 'home', label: 'SOC Holographic Command Center', icon: '🏠', hotkey: '1' },
+  { id: 'home', label: 'SOC Command Center', icon: '🏠', hotkey: '1' },
   { id: 'simulator', label: 'Cyber Range Simulator (Red/Blue Team)', icon: '⚡', hotkey: '2' },
+  { id: 'mldetection', label: 'ML Threat Detection & UEBA Engine', icon: '🧠', hotkey: 'M' },
   { id: 'soar', label: 'SOAR Autonomous Active Defense', icon: '🛡️', hotkey: '3' },
   { id: 'mitre', label: 'MITRE ATT&CK Matrix Navigator', icon: '🗺️', hotkey: '4' },
   { id: 'chat', label: 'AI Security Copilot Chat', icon: '🤖', hotkey: '5' },
@@ -374,68 +375,39 @@ const HUDHeader = ({ currentView, setCurrentView, scanlinesActive, setScanlinesA
           </div>
         </div>
 
-        {/* Right: Controls & Clocks */}
+        {/* Right: Controls, ML Engine Status & Clocks */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          {/* Audio Threat Equalizer (Animated) */}
+          {/* Real ML Engine Status Pill */}
           <div
-            title={isMuted ? 'Audio Muted' : 'Audio Active (Click Mute to Toggle)'}
+            onClick={() => setCurrentView('mldetection')}
+            title="Real-Time Machine Learning Threat Engine: IsolationForest + RandomForest UEBA Active. Click to open ML Console."
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 4,
-              padding: '6px 10px',
-              background: 'rgba(6, 10, 20, 0.85)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 8
-            }}
-          >
-            <div className="eq-container">
-              <div className="eq-bar" style={{ animationPlayState: isMuted ? 'paused' : 'running', opacity: isMuted ? 0.3 : 1 }} />
-              <div className="eq-bar" style={{ animationPlayState: isMuted ? 'paused' : 'running', opacity: isMuted ? 0.3 : 1 }} />
-              <div className="eq-bar" style={{ animationPlayState: isMuted ? 'paused' : 'running', opacity: isMuted ? 0.3 : 1 }} />
-              <div className="eq-bar" style={{ animationPlayState: isMuted ? 'paused' : 'running', opacity: isMuted ? 0.3 : 1 }} />
-              <div className="eq-bar" style={{ animationPlayState: isMuted ? 'paused' : 'running', opacity: isMuted ? 0.3 : 1 }} />
-            </div>
-            <button
-              onClick={handleAudioToggle}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: isMuted ? '#f87171' : 'var(--primary-color, #00f5d4)',
-                fontSize: '0.85rem',
-                marginLeft: 4,
-                padding: 0
-              }}
-            >
-              {isMuted ? '🔇' : '🔊'}
-            </button>
-          </div>
-
-          {/* Holographic Scanline Toggle */}
-          <button
-            onClick={() => {
-              cyberAudio.playClick();
-              if (setScanlinesActive) setScanlinesActive(p => !p);
-            }}
-            title="Toggle Holographic CRT Scanlines"
-            style={{
-              background: scanlinesActive ? 'rgba(0, 245, 212, 0.2)' : 'rgba(6, 10, 20, 0.85)',
-              border: scanlinesActive ? '1px solid var(--primary-color, #00f5d4)' : '1px solid rgba(255,255,255,0.08)',
-              color: scanlinesActive ? 'var(--primary-color, #00f5d4)' : 'rgba(255,255,255,0.6)',
+              gap: 6,
+              padding: '6px 12px',
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
               borderRadius: 8,
-              padding: '6px 10px',
               fontSize: '0.72rem',
               fontWeight: 700,
+              color: '#10b981',
+              fontFamily: 'JetBrains Mono, monospace',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
+              boxShadow: '0 0 10px rgba(16, 185, 129, 0.15)',
+              transition: 'all 150ms ease'
             }}
           >
-            <span>📺</span>
-            <span style={{ fontSize: '0.65rem' }}>CRT</span>
-          </button>
+            <span style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: '#10b981',
+              boxShadow: '0 0 8px #10b981',
+              animation: 'pulse 1.4s infinite'
+            }} />
+            <span>🧠 ML ENGINE: ONLINE</span>
+          </div>
 
           {/* Theme Matrix Switcher */}
           <div style={{ position: 'relative' }}>

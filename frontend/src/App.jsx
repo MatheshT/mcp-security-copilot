@@ -17,6 +17,7 @@ const CyberRange = lazy(() => import('./components/CyberRange'));
 const SOARPanel = lazy(() => import('./components/SOARPanel'));
 const MitreMatrix = lazy(() => import('./components/MitreMatrix'));
 const SwarmHub = lazy(() => import('./components/SwarmHub'));
+const MLThreatDetection = lazy(() => import('./components/MLThreatDetection'));
 
 const PageLoader = () => (
   <div style={{
@@ -43,7 +44,7 @@ const PageLoader = () => (
       letterSpacing: '0.14em',
       fontFamily: 'JetBrains Mono, monospace'
     }}>
-      CALIBRATING QUANTUM HUD TELEMETRY…
+      INITIALIZING SENTINEL-AI ENTERPRISE SOC GATEWAY…
     </div>
   </div>
 );
@@ -73,13 +74,16 @@ function App() {
         const viewMap = {
           '1': 'home',
           '2': 'simulator',
+          'm': 'mldetection',
+          'M': 'mldetection',
           '3': 'soar',
           '4': 'mitre',
           '5': 'chat',
           '6': 'alerts',
           '7': 'investigation',
           '8': 'intel',
-          '9': 'reports'
+          '9': 'reports',
+          '0': 'swarm'
         };
         if (viewMap[e.key]) {
           e.preventDefault();
@@ -96,6 +100,7 @@ function App() {
     switch (currentView) {
       case 'home': return <HomeDashboard setCurrentView={setCurrentView} />;
       case 'simulator': return <CyberRange />;
+      case 'mldetection': return <MLThreatDetection />;
       case 'soar': return <SOARPanel />;
       case 'mitre': return <MitreMatrix />;
       case 'chat': return <ChatInterface />;

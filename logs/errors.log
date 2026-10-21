@@ -1,0 +1,2 @@
+{"timestamp": "2026-10-15T09:27:31.507097", "level": "ERROR", "logger": "app.mcp.wazuh_server", "message": "Wazuh API request failed for alerts: Unexpected GET URL: https://192.168.56.101:55000/alerts", "module": "wazuh_server", "function": "_request", "line": 155}
+{"timestamp": "2026-10-15T09:27:31.521139", "level": "ERROR", "logger": "app.mcp.wazuh_server", "message": "Wazuh API request failed for alerts: Unexpected GET URL: https://192.168.56.101:55000/alerts", "module": "wazuh_server", "function": "_request", "line": 155}

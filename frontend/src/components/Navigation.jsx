@@ -5,6 +5,7 @@ import { cyberAudio } from '../utils/cyberSound';
 const MENU_ITEMS = [
   { id: 'home', icon: '🏠', label: 'SOC Command Center', badge: 'HUD', shortcut: '1' },
   { id: 'simulator', icon: '⚡', label: 'Cyber Range Simulator', badge: 'RED/BLUE', shortcut: '2' },
+  { id: 'mldetection', icon: '🧠', label: 'ML Threat Detection', badge: 'UEBA', shortcut: 'M' },
   { id: 'soar', icon: '🛡️', label: 'SOAR Active Defense', badge: 'AUTO', shortcut: '3' },
   { id: 'mitre', icon: '🗺️', label: 'MITRE ATT&CK Matrix', badge: 'TTP', shortcut: '4' },
   { id: 'chat', icon: '🤖', label: 'AI Security Copilot', badge: 'SWARM', shortcut: '5' },

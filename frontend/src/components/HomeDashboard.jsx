@@ -296,6 +296,7 @@ const HomeDashboard = ({ setCurrentView }) => {
         padding: '2px 0'
       }}>
         {[
+          { label: '🧠 ML Threat & UEBA Engine', view: 'mldetection', desc: 'Anomaly Detection' },
           { label: '⚡ Cyber Range Attack Simulation', view: 'simulator', desc: 'Emulate Ransomware' },
           { label: '🛡️ SOAR Autonomous Defense', view: 'soar', desc: 'Active Playbooks' },
           { label: '🤖 AI Copilot Threat Chat', view: 'chat', desc: 'Ask SentinelAI' },
