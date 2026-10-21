@@ -57,13 +57,15 @@ const renderMarkdown = (text) => {
       }
       elements.push(
         <pre key={i} style={{
-          background: 'rgba(5,8,16,0.9)',
-          border: '1px solid rgba(99,102,241,0.3)',
+          background: 'rgba(7, 11, 20, 0.95)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
           borderRadius: 8,
           padding: '12px 16px',
           overflowX: 'auto',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
           fontFamily: 'JetBrains Mono, Fira Code, monospace',
-          fontSize: '0.76rem',
+          fontSize: '0.78rem',
           color: '#38bdf8',
           margin: '10px 0',
           lineHeight: 1.6,
@@ -123,7 +125,7 @@ const MCP_CATALOG = [
   { id: 'mitre', name: 'MITRE_ATTACK', provider: 'MITRE Corporation', category: 'Adversary Framework', free: true, icon: '🗺️', desc: 'Adversary TTP taxonomy (T1059, T1110, T1486) with detection analytics & mitigations' },
   { id: 'ml', name: 'ML_Threat_Engine', provider: 'scikit-learn / SentinelAI', category: 'Machine Learning', free: true, icon: '🧠', desc: 'Real-time IsolationForest anomaly detection (0-100) & UEBA baseline drift analysis' },
   { id: 'wazuh', name: 'Wazuh SIEM', provider: 'Wazuh v4.14.7', category: 'SIEM & Fleet', free: true, icon: '🚨', desc: 'Fleet agent telemetry, live rule alerts, syscheck FIM & vulnerability scans' },
-  { id: 'soar', name: 'SOAR Defense', provider: 'SentinelAI Active Containment', category: 'Active Containment', free: true, icon: '⚡', desc: 'Autonomous IP firewall blackholing, endpoint network quarantine & mitigation playbooks' },
+  { id: 'containment', name: 'Automated Containment', provider: 'SentinelAI Network Guard', category: 'Threat Containment', free: true, icon: '⚡', desc: 'Autonomous IP firewall blackholing, endpoint network quarantine & mitigation policies' },
   { id: 'winlogs', name: 'WindowsLogs', provider: 'Windows Event Collector', category: 'Endpoint Telemetry', free: true, icon: '💻', desc: 'Real Event ID 4624/4625 security, system, and application audit logs' },
   { id: 'defender', name: 'WindowsDefender', provider: 'Microsoft Defender', category: 'EDR / Protection', free: true, icon: '🪟', desc: 'Real-time antivirus telemetry, protection status, and active detected threats' },
   { id: 'vt', name: 'VirusTotal', provider: 'Google Cloud / VT', category: 'Commercial Intel', free: false, icon: '🔬', desc: '70+ antivirus engine file hash, IP, and domain reputation analysis' },
@@ -136,11 +138,11 @@ const MCP_CATALOG = [
 
 /* ─── Tactical Quick Command Strips (Categorized Hero Prompts) ──── */
 const PROMPT_CATEGORIES = [
-  { id: 'all', label: '🔥 All Hero Prompts' },
+  { id: 'all', label: '🔥 All Prompts' },
   { id: 'free', label: '🆓 Free SOC Tools' },
   { id: 'wazuh', label: '🚨 Wazuh SIEM' },
   { id: 'ml', label: '🧠 Machine Learning' },
-  { id: 'soar', label: '⚡ SOAR Defense' },
+  { id: 'containment', label: '🛡️ Threat Containment' },
   { id: 'tanglish', label: '🇮🇳 Tamil / Tanglish' },
 ];
 
@@ -162,15 +164,15 @@ const QUICK_COMMANDS = [
   { cat: 'wazuh', icon: '🛡️', label: 'Fleet Agent Status', text: 'How many agents are connected in wazuh?', tag: 'Fleet' },
   { cat: 'wazuh', icon: '🔍', label: 'Deep Investigate', text: 'Investigate recent high severity security alerts and correlate IOCs', tag: 'Forensics' },
 
-  // SOAR Active Containment
-  { cat: 'soar', icon: '🚫', label: 'Block IP (SOAR)', text: 'Block malicious IP 185.220.101.45 via SOAR active defense', tag: 'SOAR' },
-  { cat: 'soar', icon: '🔒', label: 'Isolate Host', text: 'Isolate compromised host WS-FIN-04 via SOAR', tag: 'SOAR' },
-  { cat: 'soar', icon: '⚡', label: 'Run Auto Playbook', text: 'Run SOAR automated response playbook for active threats', tag: 'Playbook' },
+  // Active Containment
+  { cat: 'containment', icon: '🚫', label: 'Block IP (Firewall)', text: 'Block malicious IP 185.220.101.45 via automated gateway firewall rule', tag: 'Firewall' },
+  { cat: 'containment', icon: '🔒', label: 'Isolate Host', text: 'Isolate compromised host WS-FIN-04 from the corporate subnet', tag: 'Isolate' },
+  { cat: 'containment', icon: '⚡', label: 'Auto Containment', text: 'Execute automated containment policy for active high-severity threats', tag: 'Policy' },
 
   // Tamil / Tanglish
   { cat: 'tanglish', icon: '🇮🇳', label: 'Alerts Check Pannu', text: 'Wazuh alert check pannu ethana alerts iruku', tag: 'Tamil' },
   { cat: 'tanglish', icon: '🇮🇳', label: 'Agents Ethana?', text: 'Wazuh la ethana agents connect aagirukku?', tag: 'Tamil' },
-  { cat: 'tanglish', icon: '🇮🇳', label: 'IP Block Pannu', text: 'Intha IP 185.220.101.45 firewall la block pannu SOAR active defense use panni', tag: 'Tamil' },
+  { cat: 'tanglish', icon: '🇮🇳', label: 'IP Block Pannu', text: 'Intha IP 185.220.101.45 firewall la block pannu automated defense use panni', tag: 'Tamil' },
 ];
 
 const WELCOME_MSG = {
@@ -178,7 +180,7 @@ const WELCOME_MSG = {
   role: 'assistant',
   text: `🛡️ **SentinelAI X — Autonomous SOC Hero & Security Copilot**
 
-I am linked to **16 Model Context Protocol (MCP) Tools** including **6 Free SOC Tools**, **Wazuh SIEM v4.14.7**, **SOAR Active Defense**, and the **scikit-learn Machine Learning Anomaly Engine**.
+I am linked to **16 Model Context Protocol (MCP) Tools** including **6 Free SOC Tools**, **Wazuh SIEM v4.14.7**, **Automated Threat Containment**, and the **scikit-learn Machine Learning Anomaly Engine**.
 
 ### 🚀 Connected Free SOC Tools (100% Free / Zero API Keys Required):
 - 🦠 **abuse.ch MalwareBazaar & URLhaus**: Public malware binaries, SHA256 hashes, and C2 payload URLs.
@@ -187,12 +189,12 @@ I am linked to **16 Model Context Protocol (MCP) Tools** including **6 Free SOC 
 - 🔍 **CIRCL & OSV CVE Search**: Free vulnerability metrics, CVSS v3 vectors, and CWE definitions.
 - 🗺️ **MITRE ATT&CK Enterprise Matrix**: Tactical TTP behaviors, detection analytics, and defensive mitigations.
 - 🧠 **Sentinel-AI ML Threat Engine**: Real-time IsolationForest anomaly scoring, RandomForest severity prediction & UEBA drift.
-- 🚨 **Wazuh SIEM & SOAR Active Defense**: Endpoint log correlation, fleet monitoring, and automated threat containment.
+- 🚨 **Wazuh SIEM & Automated Containment**: Endpoint log correlation, fleet monitoring, and automated threat containment.
 
 *Type any query below, click a quick command chip, or inspect the 16 linked MCP tools in the top header.*`,
   time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   isWelcome: true,
-  tools_used: ['MalwareBazaar', 'CISA_KEV', 'IP_Intel', 'CVE_Search', 'MITRE_ATTACK', 'ML_Threat_Engine', 'Wazuh', 'SOAR'],
+  tools_used: ['MalwareBazaar', 'CISA_KEV', 'IP_Intel', 'CVE_Search', 'MITRE_ATTACK', 'ML_Threat_Engine', 'Wazuh', 'Containment'],
 };
 
 /* ─── Typewriter Animation Hook ───────────────────────────── */
@@ -322,31 +324,34 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
   }, [fullText]);
 
   const bubbleStyle = {
-    maxWidth: '85%',
+    maxWidth: 'min(88%, 950px)',
+    minWidth: 0,
+    boxSizing: 'border-box',
     borderRadius: isUser
       ? `${BORDER_RADIUS.xl}px ${BORDER_RADIUS.xl}px ${BORDER_RADIUS.sm}px ${BORDER_RADIUS.xl}px`
       : `${BORDER_RADIUS.xl}px ${BORDER_RADIUS.xl}px ${BORDER_RADIUS.xl}px ${BORDER_RADIUS.sm}px`,
-    padding: `${SPACING.lg}px ${SPACING.xl}px`,
+    padding: `${SPACING.md}px ${SPACING.xl}px`,
     position: 'relative',
     background: isUser
-      ? 'linear-gradient(135deg, #4f46e5, #7c3aed)'
+      ? 'linear-gradient(135deg, #2563eb, #3b82f6)'
       : message.isError
         ? 'rgba(239, 68, 68, 0.12)'
         : message.isWelcome
-          ? 'linear-gradient(180deg, rgba(15,23,42,0.95), rgba(6,9,16,0.95))'
-          : 'rgba(10, 15, 30, 0.94)',
+          ? 'linear-gradient(180deg, #111827, #0f172a)'
+          : 'rgba(17, 24, 39, 0.95)',
     border: isUser
       ? '1px solid rgba(255, 255, 255, 0.15)'
       : message.isError
         ? '1px solid rgba(239, 68, 68, 0.4)'
-        : '1px solid rgba(99, 102, 241, 0.28)',
+        : '1px solid rgba(255, 255, 255, 0.08)',
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
     color: isUser ? '#ffffff' : MODERN_COLORS.text,
     boxShadow: isUser
-      ? '0 8px 32px rgba(79, 70, 229, 0.35)'
-      : '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+      ? '0 6px 24px rgba(37, 99, 235, 0.3)'
+      : '0 6px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
     wordBreak: 'break-word',
+    overflowWrap: 'anywhere',
   };
 
   const toolColorMap = {
@@ -356,9 +361,9 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
     IP_Intel: { bg: 'rgba(16, 185, 129, 0.18)', border: 'rgba(16, 185, 129, 0.45)', text: '#34d399', icon: '🌐' },
     CVE_Search: { bg: 'rgba(245, 158, 11, 0.18)', border: 'rgba(245, 158, 11, 0.45)', text: '#fbbf24', icon: '🔍' },
     MITRE_ATTACK: { bg: 'rgba(139, 92, 246, 0.18)', border: 'rgba(139, 92, 246, 0.45)', text: '#a78bfa', icon: '🗺️' },
-    ML_Threat_Engine: { bg: 'rgba(0, 245, 212, 0.18)', border: 'rgba(0, 245, 212, 0.45)', text: '#00f5d4', icon: '🧠' },
-    Wazuh: { bg: 'rgba(6, 182, 212, 0.18)', border: 'rgba(6, 182, 212, 0.45)', text: '#06b6d4', icon: '🛡️' },
-    SOAR: { bg: 'rgba(16, 185, 129, 0.18)', border: 'rgba(16, 185, 129, 0.45)', text: '#34d399', icon: '⚡' },
+    ML_Threat_Engine: { bg: 'rgba(59, 130, 246, 0.18)', border: 'rgba(59, 130, 246, 0.45)', text: '#60a5fa', icon: '🧠' },
+    Wazuh: { bg: 'rgba(6, 182, 212, 0.18)', border: 'rgba(6, 182, 212, 0.45)', text: '#38bdf8', icon: '🛡️' },
+    Containment: { bg: 'rgba(16, 185, 129, 0.18)', border: 'rgba(16, 185, 129, 0.45)', text: '#34d399', icon: '⚡' },
     VirusTotal: { bg: 'rgba(59, 130, 246, 0.18)', border: 'rgba(59, 130, 246, 0.45)', text: '#60a5fa', icon: '🔬' },
     AbuseIPDB: { bg: 'rgba(249, 115, 22, 0.18)', border: 'rgba(249, 115, 22, 0.45)', text: '#fb923c', icon: '🎯' },
     'AlienVault OTX': { bg: 'rgba(168, 85, 247, 0.18)', border: 'rgba(168, 85, 247, 0.45)', text: '#c084fc', icon: '📡' },
@@ -573,7 +578,7 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {detectedIp && (
                 <button
-                  onClick={() => onActionClick(`Block malicious IP ${detectedIp} via SOAR active defense`)}
+                  onClick={() => onActionClick(`Block malicious IP ${detectedIp} via automated firewall containment`)}
                   style={{
                     background: 'rgba(239, 68, 68, 0.15)',
                     border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -616,9 +621,9 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
               <button
                 onClick={() => onActionClick('Run ML IsolationForest and RandomForest UEBA anomaly detection on this event')}
                 style={{
-                  background: 'rgba(0, 245, 212, 0.15)',
-                  border: '1px solid rgba(0, 245, 212, 0.35)',
-                  color: '#00f5d4',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  border: '1px solid rgba(59, 130, 246, 0.35)',
+                  color: '#93c5fd',
                   borderRadius: 8,
                   padding: '4px 10px',
                   fontSize: '0.7rem',
@@ -637,7 +642,7 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
                 style={{
                   background: 'rgba(6, 182, 212, 0.15)',
                   border: '1px solid rgba(6, 182, 212, 0.35)',
-                  color: '#22d3ee',
+                  color: '#38bdf8',
                   borderRadius: 8,
                   padding: '4px 10px',
                   fontSize: '0.7rem',
@@ -652,7 +657,7 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
               </button>
 
               <button
-                onClick={() => onActionClick('Run SOAR automated response playbook')}
+                onClick={() => onActionClick('Execute automated containment policy for active high-severity threats')}
                 style={{
                   background: 'rgba(16, 185, 129, 0.15)',
                   border: '1px solid rgba(16, 185, 129, 0.35)',
@@ -667,7 +672,7 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
                   gap: 5
                 }}
               >
-                <span>⚡</span> Run SOAR Playbook
+                <span>⚡</span> Apply Containment
               </button>
             </div>
           </div>
@@ -810,10 +815,10 @@ const ChatInterface = () => {
     } else if (qLower.includes('ip') || /\b(?:\d{1,3}\.){3}\d{1,3}\b/.test(question)) {
       tools = ['IP_Intel', 'AbuseIPDB', 'VirusTotal'];
       const ip = question.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/)?.[0] || '185.220.101.5';
-      answer += `### 🌐 IP-API Network Geolocation & ASN Intelligence (100% Free)\n- **Target IP:** \`${ip}\`\n- **Location:** 📍 Frankfurt, Germany (Timezone: Europe/Berlin)\n- **Autonomous System (ASN):** \`AS200651 (F3 Netze e.V.)\`\n- **Hosting / VPS Node:** YES (Known disposable hosting / Tor exit node)\n- **Threat Rating:** CRITICAL (Score: 85/100)\n\n### ⚡ Recommended SOAR Action\n- Trigger active firewall block for \`${ip}\` via SOAR active defense.`;
+      answer += `### 🌐 IP-API Network Geolocation & ASN Intelligence (100% Free)\n- **Target IP:** \`${ip}\`\n- **Location:** 📍 Frankfurt, Germany (Timezone: Europe/Berlin)\n- **Autonomous System (ASN):** \`AS200651 (F3 Netze e.V.)\`\n- **Hosting / VPS Node:** YES (Known disposable hosting / Tor exit node)\n- **Threat Rating:** CRITICAL (Score: 85/100)\n\n### ⚡ Recommended Containment Action\n- Apply automated firewall drop rule for \`${ip}\` across network gateways.`;
     } else if (qLower.includes('alert') || qLower.includes('wazuh')) {
-      tools = ['Wazuh', 'SOAR'];
-      answer += `### 🚨 Live Wazuh SIEM Telemetry & Active Defense\n- **Fleet Status:** 2 Protected Endpoints Online\n- **Active Security Alerts:** Correlated 24 events (Privilege Escalation, Port Scan, LOLBin Execution)\n- **Highest Severity Rule:** Level 12 (Critical Authentication Anomaly)\n- **SOAR Readiness:** Active containment armed.`;
+      tools = ['Wazuh', 'Containment'];
+      answer += `### 🚨 Live Wazuh SIEM Telemetry & Threat Defense\n- **Fleet Status:** 2 Protected Endpoints Online\n- **Active Security Alerts:** Correlated 24 events (Privilege Escalation, Port Scan, LOLBin Execution)\n- **Highest Severity Rule:** Level 12 (Critical Authentication Anomaly)\n- **Containment Readiness:** Active automated firewall armed.`;
     } else {
       answer += `### 🛡️ Unified SOC Multi-Tool Investigation Complete\n- All 16 Model Context Protocol (MCP) tool servers are registered and operational.\n- Real-time intelligence collected from free feeds (MalwareBazaar, CISA KEV, IP-API, CIRCL, MITRE ATT&CK) and Wazuh SIEM.\n- Enterprise Machine Learning models (IsolationForest & RandomForest) stand ready for behavioral anomaly scoring.`;
     }
@@ -949,63 +954,57 @@ const ChatInterface = () => {
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      background: '#040711',
+      width: '100%',
+      maxHeight: '100%',
+      background: 'var(--bg-deepest, #0b0f19)',
       position: 'relative',
       overflow: 'hidden',
       fontFamily: TYPOGRAPHY.fontFamily
     }}>
-      {/* Dynamic Cyber Grid Overlay */}
+      {/* Subtle Grid Overlay */}
       <div style={{
         position: 'absolute',
         inset: 0,
-        backgroundImage: 'linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
         backgroundSize: '36px 36px',
-        pointerEvents: 'none',
-        zIndex: 0
-      }} />
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'radial-gradient(circle at 20% 20%, rgba(99,102,241,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(6,182,212,0.06) 0%, transparent 50%)',
         pointerEvents: 'none',
         zIndex: 0
       }} />
 
       {/* ─── Hero HUD Header ─── */}
       <div style={{
-        padding: `${SPACING.md}px ${SPACING.xxl}px`,
+        padding: '12px 20px',
         position: 'relative',
-        zIndex: 1,
-        borderBottom: '1px solid rgba(99,102,241,0.2)',
-        background: 'rgba(6,9,18,0.92)',
-        backdropFilter: 'blur(20px)'
+        zIndex: 2,
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        background: 'rgba(15, 23, 42, 0.96)',
+        backdropFilter: 'blur(20px)',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           {/* Left Title & Status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 22,
-              boxShadow: '0 0 20px rgba(99,102,241,0.4)',
+              fontSize: 20,
+              boxShadow: '0 4px 16px rgba(59, 130, 246, 0.35)',
               flexShrink: 0
             }}>
               🤖
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{
-                  fontSize: '1.2rem',
+                  fontSize: '1.1rem',
                   fontWeight: 900,
                   letterSpacing: '-0.02em',
-                  background: 'linear-gradient(135deg, #6366f1, #38bdf8, #a855f7)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
+                  color: '#f8fafc'
                 }}>
                   SentinelAI X Security Copilot (Hero Feature)
                 </span>
@@ -1037,7 +1036,7 @@ const ChatInterface = () => {
                 </span>
               </div>
               <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: 2 }}>
-                MalwareBazaar • CISA KEV • IP-API • CIRCL CVE • MITRE ATT&CK • ML Threat Engine • Wazuh SIEM • SOAR
+                MalwareBazaar • CISA KEV • IP-API • CIRCL CVE • MITRE ATT&CK • ML Threat Engine • Wazuh SIEM • Threat Containment
               </div>
             </div>
           </div>
@@ -1049,10 +1048,10 @@ const ChatInterface = () => {
               onClick={() => { cyberAudio.playClick(); setShowToolsModal(true); }}
               title="Inspect all 16 connected MCP tools & capabilities"
               style={{
-                background: 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(6,182,212,0.25))',
-                border: '1px solid rgba(56,189,248,0.5)',
-                borderRadius: 10,
-                color: '#38bdf8',
+                background: 'rgba(59, 130, 246, 0.15)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                borderRadius: 8,
+                color: '#60a5fa',
                 padding: '7px 12px',
                 cursor: 'pointer',
                 fontSize: '0.72rem',
@@ -1226,13 +1225,13 @@ const ChatInterface = () => {
 
       {/* ─── Category Filter Tabs ─── */}
       <div style={{
-        padding: '8px 24px',
+        padding: '6px 20px',
         display: 'flex',
         gap: 6,
-        background: 'rgba(4,7,17,0.9)',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        background: 'rgba(15, 23, 42, 0.95)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
         overflowX: 'auto',
-        scrollbarWidth: 'none',
+        scrollbarWidth: 'thin',
         flexShrink: 0
       }}>
         {PROMPT_CATEGORIES.map(cat => (
@@ -1240,10 +1239,10 @@ const ChatInterface = () => {
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
             style={{
-              background: activeCategory === cat.id ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.03)',
-              border: activeCategory === cat.id ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.08)',
+              background: activeCategory === cat.id ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.03)',
+              border: activeCategory === cat.id ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)',
               borderRadius: 6,
-              color: activeCategory === cat.id ? '#38bdf8' : '#94a3b8',
+              color: activeCategory === cat.id ? '#60a5fa' : '#94a3b8',
               padding: '4px 10px',
               fontSize: '0.66rem',
               fontWeight: 700,
@@ -1259,16 +1258,16 @@ const ChatInterface = () => {
 
       {/* ─── Tactical Quick Command Strip ─── */}
       <div style={{
-        padding: '8px 24px',
+        padding: '6px 20px',
         position: 'relative',
         zIndex: 1,
         display: 'flex',
         gap: 8,
         overflowX: 'auto',
         flexShrink: 0,
-        scrollbarWidth: 'none',
-        background: 'rgba(5,8,16,0.6)',
-        borderBottom: '1px solid rgba(255,255,255,0.04)'
+        scrollbarWidth: 'thin',
+        background: 'rgba(11, 15, 25, 0.92)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)'
       }}>
         {filteredCommands.map((cmd, idx) => (
           <button
@@ -1278,7 +1277,7 @@ const ChatInterface = () => {
             style={{
               flexShrink: 0,
               background: cmd.tag === 'Tamil' ? 'rgba(234, 179, 8, 0.12)' : 'rgba(15, 23, 42, 0.8)',
-              border: `1px solid ${cmd.tag === 'Tamil' ? 'rgba(234, 179, 8, 0.35)' : 'rgba(99, 102, 241, 0.25)'}`,
+              border: `1px solid ${cmd.tag === 'Tamil' ? 'rgba(234, 179, 8, 0.35)' : 'rgba(255, 255, 255, 0.1)'}`,
               borderRadius: 20,
               color: cmd.tag === 'Tamil' ? '#fde047' : '#cbd5e1',
               padding: '5px 12px',
@@ -1292,11 +1291,11 @@ const ChatInterface = () => {
               whiteSpace: 'nowrap'
             }}
             onMouseOver={e => {
-              e.currentTarget.style.borderColor = '#38bdf8';
-              e.currentTarget.style.color = '#38bdf8';
+              e.currentTarget.style.borderColor = '#3b82f6';
+              e.currentTarget.style.color = '#60a5fa';
             }}
             onMouseOut={e => {
-              e.currentTarget.style.borderColor = cmd.tag === 'Tamil' ? 'rgba(234, 179, 8, 0.35)' : 'rgba(99, 102, 241, 0.25)';
+              e.currentTarget.style.borderColor = cmd.tag === 'Tamil' ? 'rgba(234, 179, 8, 0.35)' : 'rgba(255, 255, 255, 0.1)';
               e.currentTarget.style.color = cmd.tag === 'Tamil' ? '#fde047' : '#cbd5e1';
             }}
           >
@@ -1312,10 +1311,10 @@ const ChatInterface = () => {
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: `${SPACING.md}px ${SPACING.xxl}px`,
+          padding: '16px 20px',
           display: 'flex',
           flexDirection: 'column',
-          gap: SPACING.lg,
+          gap: 16,
           position: 'relative',
           zIndex: 1,
           minHeight: 0
@@ -1337,12 +1336,13 @@ const ChatInterface = () => {
 
       {/* ─── Command Input Terminal ─── */}
       <div style={{
-        padding: `${SPACING.md}px ${SPACING.xxl}px ${SPACING.lg}px`,
+        padding: '10px 20px 12px',
         position: 'relative',
-        zIndex: 1,
-        borderTop: '1px solid rgba(99,102,241,0.2)',
-        background: 'rgba(6,9,18,0.92)',
-        backdropFilter: 'blur(20px)'
+        zIndex: 10,
+        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        background: 'rgba(15, 23, 42, 0.98)',
+        backdropFilter: 'blur(20px)',
+        flexShrink: 0
       }}>
         <form onSubmit={handleSend} style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
           <div style={{ flex: 1, position: 'relative' }}>
@@ -1360,9 +1360,9 @@ const ChatInterface = () => {
               rows={1}
               style={{
                 width: '100%',
-                background: 'rgba(10,15,30,0.95)',
-                border: '1px solid rgba(99,102,241,0.35)',
-                borderRadius: 12,
+                background: 'rgba(10, 15, 30, 0.95)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: 10,
                 color: '#f8fafc',
                 padding: '12px 16px',
                 fontSize: '0.85rem',
@@ -1371,12 +1371,14 @@ const ChatInterface = () => {
                 resize: 'none',
                 lineHeight: 1.5,
                 transition: 'border-color 150ms ease',
-                overflowY: 'hidden',
+                overflowY: 'auto',
                 minHeight: 48,
-                boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)'
+                maxHeight: 160,
+                boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)',
+                boxSizing: 'border-box'
               }}
-              onFocus={e => e.target.style.borderColor = '#38bdf8'}
-              onBlur={e => e.target.style.borderColor = 'rgba(99,102,241,0.35)'}
+              onFocus={e => e.target.style.borderColor = '#3b82f6'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
             />
             {charCount > 0 && (
               <div style={{
@@ -1397,10 +1399,10 @@ const ChatInterface = () => {
             disabled={loading || !input.trim()}
             style={{
               background: loading || !input.trim()
-                ? 'rgba(99,102,241,0.25)'
-                : 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                ? 'rgba(59, 130, 246, 0.25)'
+                : 'linear-gradient(135deg, #3b82f6, #2563eb)',
               border: 'none',
-              borderRadius: 12,
+              borderRadius: 10,
               color: '#ffffff',
               padding: '0 24px',
               height: 48,
@@ -1412,7 +1414,7 @@ const ChatInterface = () => {
               gap: 8,
               transition: 'all 200ms ease',
               whiteSpace: 'nowrap',
-              boxShadow: loading || !input.trim() ? 'none' : '0 4px 16px rgba(99,102,241,0.4)',
+              boxShadow: loading || !input.trim() ? 'none' : '0 4px 16px rgba(59, 130, 246, 0.35)',
               flexShrink: 0
             }}
           >
@@ -1450,22 +1452,22 @@ const ChatInterface = () => {
         >
           <div
             style={{
-              background: 'rgba(10, 15, 30, 0.98)',
-              border: '1px solid rgba(99, 102, 241, 0.5)',
+              background: 'rgba(15, 23, 42, 0.98)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
               borderRadius: 16,
-              maxWidth: 820,
+              maxWidth: 860,
               width: '100%',
               maxHeight: '85vh',
               overflowY: 'auto',
               padding: 24,
-              boxShadow: '0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(99,102,241,0.2)',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(59, 130, 246, 0.15)',
               position: 'relative'
             }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 12 }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#38bdf8', fontWeight: 800 }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#f8fafc', fontWeight: 800 }}>
                   ⚡ SentinelAI Model Context Protocol (MCP) Tools Catalog
                 </h3>
                 <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 4 }}>
@@ -1488,15 +1490,15 @@ const ChatInterface = () => {
 
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
               gap: 12
             }}>
               {MCP_CATALOG.map(tool => (
                 <div
                   key={tool.id}
                   style={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(99,102,241,0.2)',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
                     borderRadius: 10,
                     padding: '12px 14px',
                     display: 'flex',

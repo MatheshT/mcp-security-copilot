@@ -148,7 +148,9 @@ function App() {
         marginLeft: sidebarCollapsed ? '80px' : '280px',
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh',
+        height: '100vh',
+        maxHeight: '100vh',
+        overflow: 'hidden',
         transition: 'margin-left 300ms cubic-bezier(0.25, 0.8, 0.25, 1)',
         position: 'relative',
         zIndex: 1
@@ -167,8 +169,11 @@ function App() {
         {/* Dynamic Route Content */}
         <main style={{
           flex: 1,
-          padding: '24px 28px',
-          overflowY: 'auto'
+          padding: currentView === 'chat' ? 0 : '24px 28px',
+          overflowY: currentView === 'chat' ? 'hidden' : 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0
         }}>
           <Suspense fallback={<PageLoader />}>
             {renderView()}
