@@ -835,7 +835,9 @@ const ChatInterface = () => {
     const question = (typeof questionText === 'string' && questionText.trim()) ? questionText.trim() : input.trim();
     if (!question || loading) return;
 
-    cyberAudio.playWarp();
+    try {
+      cyberAudio.playWarp?.();
+    } catch {}
 
     const userMsg = {
       id: Date.now(),
@@ -912,7 +914,9 @@ const ChatInterface = () => {
         responseText = [summary, responseText.replace(/^\*\*Wazuh Query Results:\*\*[\s\S]*?(?:\n\n)?/i, '').trim()].filter(Boolean).join('\n\n');
       }
 
-      cyberAudio.playSuccess();
+      try {
+        cyberAudio.playSuccess?.();
+      } catch {}
 
       const aiMsg = {
         id: Date.now() + 1,
@@ -946,16 +950,18 @@ const ChatInterface = () => {
   }, [input, loading, messages, selectedModel, getApiUrl, generateClientFallback]);
 
   const handleSend = useCallback((e) => {
-    if (e) e.preventDefault();
-    executeQuery();
-  }, [executeQuery]);
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    const q = input.trim() || 'What free SOC tools are connected?';
+    executeQuery(q);
+  }, [input, executeQuery]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      executeQuery();
+      handleSend(e);
     }
-  }, [executeQuery]);
+  }, [handleSend]);
 
   const currentModel = AI_MODELS.find(m => m.id === selectedModel);
   const charCount = input.length;
@@ -1406,10 +1412,11 @@ const ChatInterface = () => {
           </div>
 
           <button
-            type="submit"
-            disabled={loading || !input.trim()}
+            type="button"
+            onClick={handleSend}
+            disabled={loading}
             style={{
-              background: loading || !input.trim()
+              background: loading
                 ? 'rgba(59, 130, 246, 0.25)'
                 : 'linear-gradient(135deg, #3b82f6, #2563eb)',
               border: 'none',
@@ -1417,7 +1424,7 @@ const ChatInterface = () => {
               color: '#ffffff',
               padding: '0 24px',
               height: 48,
-              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               fontSize: '0.85rem',
               fontWeight: 800,
               display: 'flex',
@@ -1425,7 +1432,7 @@ const ChatInterface = () => {
               gap: 8,
               transition: 'all 200ms ease',
               whiteSpace: 'nowrap',
-              boxShadow: loading || !input.trim() ? 'none' : '0 4px 16px rgba(59, 130, 246, 0.35)',
+              boxShadow: loading ? 'none' : '0 4px 16px rgba(59, 130, 246, 0.35)',
               flexShrink: 0
             }}
           >

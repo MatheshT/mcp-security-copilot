@@ -20,6 +20,19 @@ class CyberAudioEngine {
   playScan() {}
   playMatrixBeep() {}
   playRadioBurst() {}
+  playWarp() {}
+  playAlarm() {}
+  playSonar() {}
 }
 
-export const cyberAudio = new CyberAudioEngine();
+const baseAudio = new CyberAudioEngine();
+
+// Proxy to guarantee safe execution of any audio method without throwing
+export const cyberAudio = new Proxy(baseAudio, {
+  get(target, prop) {
+    if (prop in target) {
+      return typeof target[prop] === 'function' ? target[prop].bind(target) : target[prop];
+    }
+    return () => {};
+  }
+});
