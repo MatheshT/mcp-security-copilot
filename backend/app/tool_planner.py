@@ -36,6 +36,21 @@ class ToolPlanner:
         commands: Dict[str, List[str]] = {}
         reasoning = ""
 
+        # Free SOC Tools Status & Discovery
+        if any(k in query_lower for k in ['free soc tool', 'free tool', 'free tools', 'what tool', 'available tool', 'mcp tool', 'connected tool', 'free soc', 'connect free']):
+            return {
+                "required_tools": ["MalwareBazaar", "CISA_KEV", "IP_Intel", "CVE_Search", "MITRE_ATTACK", "ML_Threat_Engine"],
+                "tool_commands": {
+                    "MalwareBazaar": ["lookup_hash 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"],
+                    "CISA_KEV": ["check_cve CVE-2023-34362"],
+                    "IP_Intel": ["lookup_ip 185.220.101.5"],
+                    "CVE_Search": ["search_cve CVE-2023-34362"],
+                    "MITRE_ATTACK": ["lookup_technique T1059"],
+                    "ML_Threat_Engine": ["detect_anomaly"]
+                },
+                "reasoning": "Free SOC tools inquiry detected. Gathering live intelligence across all connected free MCP endpoints (MalwareBazaar, CISA KEV, IP-API Intel, CIRCL CVE, MITRE ATTACK, ML Anomaly Engine)."
+            }
+
         if re.search(r'\b(?:collect|coolect|gather|retrieve|fetch|pull)\b.*\blogs?\b', query_lower):
             return {
                 "required_tools": ["WindowsLogs"],
@@ -83,7 +98,7 @@ class ToolPlanner:
             }
 
         # Wazuh Agents Query
-        if any(k in query_lower for k in ['agent', 'connected', 'endpoints', 'how many agent', 'ethana agent', 'agents check', 'agent ethana', 'agents iruku', 'agents irruku', 'agents status']):
+        if any(k in query_lower for k in ['agent', 'connected agents', 'active agents', 'endpoints', 'how many agent', 'ethana agent', 'agents check', 'agent ethana', 'agents iruku', 'agents irruku', 'agents status']):
             return {
                 "required_tools": ["Wazuh"],
                 "tool_commands": {"Wazuh": ["get_agents", "get_statistics"]},
@@ -96,6 +111,68 @@ class ToolPlanner:
                 "required_tools": ["Wazuh"],
                 "tool_commands": {"Wazuh": ["get_alerts", "get_statistics"]},
                 "reasoning": "Real Wazuh security alerts query detected. Retrieving live SIEM alerts and telemetry."
+            }
+
+        # Free SOC Tools Status & Discovery
+        if any(k in query_lower for k in ['free soc tool', 'free tool', 'free tools', 'what tool', 'available tool', 'mcp tool', 'connected tool', 'free soc']):
+            return {
+                "required_tools": ["MalwareBazaar", "CISA_KEV", "IP_Intel", "CVE_Search", "MITRE_ATTACK", "ML_Threat_Engine"],
+                "tool_commands": {
+                    "MalwareBazaar": ["lookup_hash 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"],
+                    "CISA_KEV": ["check_cve CVE-2023-34362"],
+                    "IP_Intel": ["lookup_ip 185.220.101.5"],
+                    "CVE_Search": ["search_cve CVE-2023-34362"],
+                    "MITRE_ATTACK": ["lookup_technique T1059"],
+                    "ML_Threat_Engine": ["detect_anomaly"]
+                },
+                "reasoning": "Free SOC tools inquiry detected. Gathering live intelligence across all connected free MCP endpoints (MalwareBazaar, CISA KEV, IP-API Intel, CIRCL CVE, MITRE ATTACK, ML Anomaly Engine)."
+            }
+
+        # CISA KEV & Vulnerability Intent
+        cve_match = re.search(r'(cve-\d{4}-\d{4,7})', query, re.I)
+        if cve_match or any(k in query_lower for k in ['cisa', 'kev', 'vulnerability', 'cve']):
+            cve_id = cve_match.group(1).upper() if cve_match else 'CVE-2021-44228'
+            return {
+                "required_tools": ["CISA_KEV", "CVE_Search"],
+                "tool_commands": {
+                    "CISA_KEV": [f"check_cve {cve_id}"],
+                    "CVE_Search": [f"search_cve {cve_id}"]
+                },
+                "reasoning": f"Weaponized vulnerability assessment intent detected. Querying official CISA KEV Catalog and CIRCL CVE database for {cve_id}."
+            }
+
+        # MITRE ATT&CK TTP Intent
+        mitre_match = re.search(r'(t\d{4}(?:\.\d{3})?)', query, re.I)
+        if mitre_match or any(k in query_lower for k in ['mitre', 'att&ck', 'attack technique', 'ttp', 'tactics', 'tactic']):
+            ttp_id = mitre_match.group(1).upper() if mitre_match else ('T1059' if 'script' in query_lower else ('T1110' if 'brute' in query_lower else query.strip()))
+            return {
+                "required_tools": ["MITRE_ATTACK"],
+                "tool_commands": {
+                    "MITRE_ATTACK": [f"lookup_technique {ttp_id}"]
+                },
+                "reasoning": f"Adversary TTP taxonomy lookup detected. Querying MITRE ATTACK Enterprise Matrix for {ttp_id}."
+            }
+
+        # ML Threat & UEBA Anomaly Intent
+        if any(k in query_lower for k in ['machine learning', 'isolation forest', 'random forest', 'ueba', 'anomaly score', 'behavioral deviation', 'false positive rate', 'ml detection', 'ml engine']):
+            return {
+                "required_tools": ["ML_Threat_Engine"],
+                "tool_commands": {
+                    "ML_Threat_Engine": [query]
+                },
+                "reasoning": "Machine Learning inference and UEBA behavioral analytics intent detected. Running IsolationForest and RandomForest triage via MCP."
+            }
+
+        # MalwareBazaar / Hash Intent
+        if entities.get('hash') or any(k in query_lower for k in ['malwarebazaar', 'malware bazaar', 'urlhaus', 'abuse.ch', 'file hash', 'sha256', 'md5']):
+            target_hash = entities.get('hash') or query.split()[-1]
+            return {
+                "required_tools": ["MalwareBazaar", "VirusTotal"],
+                "tool_commands": {
+                    "MalwareBazaar": [f"lookup_hash {target_hash}"],
+                    "VirusTotal": [f"check_hash {target_hash}"]
+                },
+                "reasoning": f"Malware sample and hash lookup intent detected for {target_hash} across free MalwareBazaar and VirusTotal."
             }
 
         # 1. Direct LLM response - No tools needed ONLY for pure conceptual, conversational questions without security entities
@@ -113,7 +190,8 @@ class ToolPlanner:
         # 2. IOC Lookup Intent
         if query_type == 'ioc_lookup' or intent == 'ioc_lookup' or any(k in query_lower for k in ['check ip', 'check hash', 'check url', 'check domain', 'vt', 'virustotal', 'investigate ip']):
             if entities.get('ip'):
-                tools.extend(['VirusTotal', 'AbuseIPDB', 'Wazuh'])
+                tools.extend(['IP_Intel', 'VirusTotal', 'AbuseIPDB', 'Wazuh'])
+                commands['IP_Intel'] = [f"lookup_ip {entities['ip']}"]
                 commands['VirusTotal'] = [f"check_ip {entities['ip']}"]
                 commands['AbuseIPDB'] = [f"check {entities['ip']}"]
                 commands['Wazuh'] = ["get_alerts"]

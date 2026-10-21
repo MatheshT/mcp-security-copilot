@@ -130,6 +130,12 @@ class EnhancedSecurityCopilotOrchestrator:
             'alienvault_data': {},
             'windows_defender_data': {},
             'windows_logs_data': {},
+            'malwarebazaar_data': {},
+            'cisa_kev_data': {},
+            'ip_intel_data': {},
+            'cve_search_data': {},
+            'mitre_attack_data': {},
+            'ml_threat_data': {},
             'tool_usage_log': []
         }
 
@@ -156,6 +162,18 @@ class EnhancedSecurityCopilotOrchestrator:
                 return self._execute_windows_logs(tool_commands, extracted_data, entities)
             elif tool_name_lower == "soar":
                 return self._execute_soar(tool_commands, extracted_data, entities)
+            elif tool_name_lower in ["malwarebazaar", "urlhaus", "abusech"]:
+                return self._execute_malwarebazaar(tool_commands, extracted_data, entities)
+            elif tool_name_lower in ["cisa_kev", "cisa", "kev"]:
+                return self._execute_cisa_kev(tool_commands, extracted_data, entities)
+            elif tool_name_lower in ["ip_intel", "ipapi", "ip_api"]:
+                return self._execute_ip_intel(tool_commands, extracted_data, entities)
+            elif tool_name_lower in ["cve_search", "circl", "cve"]:
+                return self._execute_cve_search(tool_commands, extracted_data, entities)
+            elif tool_name_lower in ["mitre_attack", "mitre", "ttp"]:
+                return self._execute_mitre_attack(tool_commands, extracted_data, entities)
+            elif tool_name_lower in ["ml_threat_engine", "ml", "ml_threat", "mldetection"]:
+                return self._execute_ml_threat_engine(tool_commands, extracted_data, entities)
             else:
                 print(f"Unknown tool: {tool_name}")
                 return None
@@ -450,6 +468,96 @@ class EnhancedSecurityCopilotOrchestrator:
         extracted_data['soar_data'] = soar_data
         extracted_data['tool_usage_log'].append({'tool': 'SOAR', 'status': 'completed', 'command': cmd})
         return self._tool_result("SOAR", cmd, soar_data, soar_response)
+
+    def _execute_malwarebazaar(self, tool_commands: Dict, extracted_data: Dict, entities: Dict) -> ToolResponse:
+        """Execute MalwareBazaar & URLhaus free threat intelligence."""
+        cmds = tool_commands.get('MalwareBazaar') or tool_commands.get('URLhaus') or ['lookup_hash e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855']
+        cmd = cmds[0] if isinstance(cmds, list) and cmds else str(cmds)
+        extracted_data['tool_usage_log'].append({'tool': 'MalwareBazaar', 'status': 'started', 'command': cmd})
+        try:
+            resp = self.mcp_client.call_tool("MalwareBazaar", cmd)
+            data = resp.data if hasattr(resp, 'data') else resp
+        except Exception as e:
+            data = {"error": str(e)}
+            resp = None
+        extracted_data['malwarebazaar_data'] = data
+        extracted_data['tool_usage_log'].append({'tool': 'MalwareBazaar', 'status': 'completed', 'command': cmd})
+        return self._tool_result("MalwareBazaar", cmd, data, resp)
+
+    def _execute_cisa_kev(self, tool_commands: Dict, extracted_data: Dict, entities: Dict) -> ToolResponse:
+        """Execute CISA Known Exploited Vulnerabilities catalog check."""
+        cmds = tool_commands.get('CISA_KEV') or tool_commands.get('cisa') or ['check_cve CVE-2023-34362']
+        cmd = cmds[0] if isinstance(cmds, list) and cmds else str(cmds)
+        extracted_data['tool_usage_log'].append({'tool': 'CISA_KEV', 'status': 'started', 'command': cmd})
+        try:
+            resp = self.mcp_client.call_tool("CISA_KEV", cmd)
+            data = resp.data if hasattr(resp, 'data') else resp
+        except Exception as e:
+            data = {"error": str(e)}
+            resp = None
+        extracted_data['cisa_kev_data'] = data
+        extracted_data['tool_usage_log'].append({'tool': 'CISA_KEV', 'status': 'completed', 'command': cmd})
+        return self._tool_result("CISA_KEV", cmd, data, resp)
+
+    def _execute_ip_intel(self, tool_commands: Dict, extracted_data: Dict, entities: Dict) -> ToolResponse:
+        """Execute free IP Geolocation, ASN and Reverse DNS threat enrichment."""
+        cmds = tool_commands.get('IP_Intel') or ['lookup_ip 185.220.101.5']
+        cmd = cmds[0] if isinstance(cmds, list) and cmds else str(cmds)
+        extracted_data['tool_usage_log'].append({'tool': 'IP_Intel', 'status': 'started', 'command': cmd})
+        try:
+            resp = self.mcp_client.call_tool("IP_Intel", cmd)
+            data = resp.data if hasattr(resp, 'data') else resp
+        except Exception as e:
+            data = {"error": str(e)}
+            resp = None
+        extracted_data['ip_intel_data'] = data
+        extracted_data['tool_usage_log'].append({'tool': 'IP_Intel', 'status': 'completed', 'command': cmd})
+        return self._tool_result("IP_Intel", cmd, data, resp)
+
+    def _execute_cve_search(self, tool_commands: Dict, extracted_data: Dict, entities: Dict) -> ToolResponse:
+        """Execute free CIRCL / OSV vulnerability search."""
+        cmds = tool_commands.get('CVE_Search') or ['search_cve CVE-2021-44228']
+        cmd = cmds[0] if isinstance(cmds, list) and cmds else str(cmds)
+        extracted_data['tool_usage_log'].append({'tool': 'CVE_Search', 'status': 'started', 'command': cmd})
+        try:
+            resp = self.mcp_client.call_tool("CVE_Search", cmd)
+            data = resp.data if hasattr(resp, 'data') else resp
+        except Exception as e:
+            data = {"error": str(e)}
+            resp = None
+        extracted_data['cve_search_data'] = data
+        extracted_data['tool_usage_log'].append({'tool': 'CVE_Search', 'status': 'completed', 'command': cmd})
+        return self._tool_result("CVE_Search", cmd, data, resp)
+
+    def _execute_mitre_attack(self, tool_commands: Dict, extracted_data: Dict, entities: Dict) -> ToolResponse:
+        """Execute MITRE ATT&CK TTP taxonomy navigation."""
+        cmds = tool_commands.get('MITRE_ATTACK') or ['lookup_technique T1059']
+        cmd = cmds[0] if isinstance(cmds, list) and cmds else str(cmds)
+        extracted_data['tool_usage_log'].append({'tool': 'MITRE_ATTACK', 'status': 'started', 'command': cmd})
+        try:
+            resp = self.mcp_client.call_tool("MITRE_ATTACK", cmd)
+            data = resp.data if hasattr(resp, 'data') else resp
+        except Exception as e:
+            data = {"error": str(e)}
+            resp = None
+        extracted_data['mitre_attack_data'] = data
+        extracted_data['tool_usage_log'].append({'tool': 'MITRE_ATTACK', 'status': 'completed', 'command': cmd})
+        return self._tool_result("MITRE_ATTACK", cmd, data, resp)
+
+    def _execute_ml_threat_engine(self, tool_commands: Dict, extracted_data: Dict, entities: Dict) -> ToolResponse:
+        """Execute local Machine Learning IsolationForest + RandomForest UEBA threat scoring."""
+        cmds = tool_commands.get('ML_Threat_Engine') or ['detect_anomaly']
+        cmd = cmds[0] if isinstance(cmds, list) and cmds else str(cmds)
+        extracted_data['tool_usage_log'].append({'tool': 'ML_Threat_Engine', 'status': 'started', 'command': cmd})
+        try:
+            resp = self.mcp_client.call_tool("ML_Threat_Engine", cmd)
+            data = resp.data if hasattr(resp, 'data') else resp
+        except Exception as e:
+            data = {"error": str(e)}
+            resp = None
+        extracted_data['ml_threat_data'] = data
+        extracted_data['tool_usage_log'].append({'tool': 'ML_Threat_Engine', 'status': 'completed', 'command': cmd})
+        return self._tool_result("ML_Threat_Engine", cmd, data, resp)
 
     def _generate_comprehensive_report(self, extracted_data: Dict, responses: List, llm_result: Dict) -> Dict:
         """Generate comprehensive report with all tool data."""
@@ -1148,6 +1256,18 @@ class EnhancedSecurityCopilotOrchestrator:
                 answer += self._format_windows_logs_results(extracted_data)
             elif tool_name == "SOAR":
                 answer += self._format_soar_results(extracted_data)
+            elif tool_name in ["MalwareBazaar", "URLhaus"]:
+                answer += self._format_malwarebazaar_results(extracted_data)
+            elif tool_name == "CISA_KEV":
+                answer += self._format_cisa_kev_results(extracted_data)
+            elif tool_name == "IP_Intel":
+                answer += self._format_ip_intel_results(extracted_data)
+            elif tool_name == "CVE_Search":
+                answer += self._format_cve_search_results(extracted_data)
+            elif tool_name == "MITRE_ATTACK":
+                answer += self._format_mitre_attack_results(extracted_data)
+            elif tool_name == "ML_Threat_Engine":
+                answer += self._format_ml_threat_results(extracted_data)
             else:
                 answer += "Tool completed without a configured findings formatter.\n"
 
@@ -1835,3 +1955,122 @@ class EnhancedSecurityCopilotOrchestrator:
             "wazuh_data_types": list(wazuh_data.keys()),
             "tool_success_rate": tool_success_rate
         }
+    def _format_malwarebazaar_results(self, extracted_data: Dict) -> str:
+        """Format abuse.ch MalwareBazaar & URLhaus findings."""
+        mb = extracted_data.get('malwarebazaar_data', {})
+        if not mb or not isinstance(mb, dict):
+            return "No MalwareBazaar intelligence records retrieved.\n"
+        res = "### 🦠 abuse.ch MalwareBazaar / URLhaus Threat Intelligence (100% Free)\n"
+        res += f"- **Target Queried:** `{mb.get('hash') or mb.get('target', 'N/A')}`\n"
+        res += f"- **Verdict:** **{mb.get('verdict', 'UNKNOWN')}** (Risk: `{mb.get('risk_level', 'Low')}`)\n"
+        if mb.get('threat_name'):
+            res += f"- **Threat Classification:** {mb.get('threat_name')}\n"
+        if mb.get('signature'):
+            res += f"- **Malware Signature:** `{mb.get('signature')}` (File Type: `{mb.get('file_type', 'exe')}`)\n"
+        if mb.get('tags'):
+            res += f"- **Adversary Tags:** `{', '.join(mb.get('tags', []))}`\n"
+        if mb.get('delivery'):
+            res += f"- **Observed Delivery Vector:** {mb.get('delivery')}\n"
+        if mb.get('note'):
+            res += f"- **Intelligence Note:** {mb.get('note')}\n"
+        res += f"- **Source:** {mb.get('threat_source', 'abuse.ch Community Feed')}\n\n"
+        return res
+
+    def _format_cisa_kev_results(self, extracted_data: Dict) -> str:
+        """Format CISA Known Exploited Vulnerabilities Catalog findings."""
+        kev = extracted_data.get('cisa_kev_data', {})
+        if not kev or not isinstance(kev, dict):
+            return "No CISA KEV records retrieved.\n"
+        res = "### 🛡️ CISA Known Exploited Vulnerabilities (KEV) Catalog (US DHS / CISA)\n"
+        cve = kev.get('cve_id', 'N/A')
+        in_kev = kev.get('in_cisa_kev', False)
+        if in_kev:
+            res += f"- **Vulnerability:** **{cve}** — `{kev.get('product', 'Unknown Product')}` by *{kev.get('vendor', 'Unknown')}*\n"
+            res += f"- **Exploitation Status:** 🚨 **CONFIRMED ACTIVELY EXPLOITED IN THE WILD (CISA KEV)**\n"
+            res += f"- **Vulnerability Name:** {kev.get('vulnerability_name')}\n"
+            res += f"- **Known Ransomware Campaign Use:** **{kev.get('known_ransomware_campaign_use', 'Suspected')}**\n"
+            res += f"- **Remediation Action Required:** {kev.get('required_action')}\n"
+            res += f"- **Federal Compliance Due Date:** `{kev.get('remediation_due_date', 'Immediate')}`\n"
+            res += f"- **CVSS v3 Baseline:** `{kev.get('cvss_score', 9.0)} / 10.0 (CRITICAL)`\n"
+        else:
+            res += f"- **CVE Identifier:** `{cve}`\n"
+            res += f"- **CISA KEV Status:** Clean — Not currently cataloged as a weaponized in-the-wild exploit.\n"
+            res += f"- **Guidance:** {kev.get('guidance', 'Standard patch cadence applies.')}\n"
+        res += f"- **Authoritative Body:** {kev.get('authority', 'CISA Cybersecurity Division')}\n\n"
+        return res
+
+    def _format_ip_intel_results(self, extracted_data: Dict) -> str:
+        """Format free IP-API Geolocation, ASN and Reverse DNS findings."""
+        ip_data = extracted_data.get('ip_intel_data', {})
+        if not ip_data or not isinstance(ip_data, dict):
+            return "No IP intelligence records retrieved.\n"
+        res = "### 🌐 IP-API Network Geolocation & ASN Intelligence (100% Free)\n"
+        res += f"- **Target IP:** `{ip_data.get('ip', 'N/A')}`\n"
+        res += f"- **Location:** 📍 **{ip_data.get('city', 'Unknown')}, {ip_data.get('country', 'Unknown')}** (TZ: `{ip_data.get('timezone', 'UTC')}`)\n"
+        res += f"- **Autonomous System (ASN):** `{ip_data.get('asn', 'Unknown')}`\n"
+        res += f"- **Internet Service Provider (ISP):** `{ip_data.get('isp', 'Unknown')}` (Org: *{ip_data.get('organization', 'N/A')}*)\n"
+        res += f"- **Reverse DNS PTR:** `{ip_data.get('reverse_dns', 'None')}`\n"
+        res += f"- **Hosting / Datacenter Node:** `{'YES (Potential VPS / Disposable C2)' if ip_data.get('is_datacenter_hosting') else 'No (Residential / Access Net)'}`\n"
+        res += f"- **Proxy / VPN / Anonymizer Flag:** `{'YES' if ip_data.get('is_proxy_vpn') else 'No'}`\n"
+        res += f"- **Calculated Threat Rating:** `{ip_data.get('risk_level', 'Low').upper()} (Score: {ip_data.get('risk_score', 10)}/100)`\n\n"
+        return res
+
+    def _format_cve_search_results(self, extracted_data: Dict) -> str:
+        """Format CIRCL / OSV vulnerability search findings."""
+        cve = extracted_data.get('cve_search_data', {})
+        if not cve or not isinstance(cve, dict):
+            return "No CVE search records retrieved.\n"
+        res = "### 🔍 CIRCL / OSV Open Vulnerability Intelligence (Free CVE Database)\n"
+        res += f"- **Vulnerability:** `{cve.get('cve_id', 'N/A')}`\n"
+        res += f"- **CVSS v3 Score:** **`{cve.get('cvss_v3', 'N/A')} / 10.0`** (Severity: **{cve.get('severity', 'HIGH')}**)\n"
+        if cve.get('cwe'):
+            res += f"- **Weakness Enumeration:** `{cve.get('cwe')}`\n"
+        if cve.get('summary'):
+            res += f"- **Technical Summary:** {cve.get('summary')}\n"
+        if cve.get('remediation'):
+            res += f"- **Remediation Strategy:** {cve.get('remediation')}\n"
+        if cve.get('exploit_status'):
+            res += f"- **Public Exploit Availability:** ⚠️ *{cve.get('exploit_status')}*\n"
+        res += f"- **Source:** {cve.get('source', 'CIRCL.lu Open API')}\n\n"
+        return res
+
+    def _format_mitre_attack_results(self, extracted_data: Dict) -> str:
+        """Format MITRE ATT&CK Matrix findings."""
+        mitre = extracted_data.get('mitre_attack_data', {})
+        if not mitre or not isinstance(mitre, dict):
+            return "No MITRE ATT&CK records retrieved.\n"
+        res = "### 🗺️ MITRE ATT&CK Enterprise Matrix Framework\n"
+        res += f"- **Technique:** **{mitre.get('technique_id', 'N/A')} — {mitre.get('technique_name', 'Adversary Technique')}**\n"
+        res += f"- **Tactic Phase:** `{mitre.get('tactic', 'Execution')}`\n"
+        if mitre.get('description'):
+            res += f"- **Adversary Behavior:** {mitre.get('description')}\n"
+        if mitre.get('detection_strategy'):
+            res += f"- **Detection Analytics:** 🛡️ {mitre.get('detection_strategy')}\n"
+        if mitre.get('mitigations'):
+            mit_str = '; '.join(mitre.get('mitigations', [])) if isinstance(mitre.get('mitigations'), list) else str(mitre.get('mitigations'))
+            res += f"- **Defensive Mitigations:** {mit_str}\n"
+        res += f"- **Framework Standard:** {mitre.get('framework', 'MITRE ATT&CK v14')}\n\n"
+        return res
+
+    def _format_ml_threat_results(self, extracted_data: Dict) -> str:
+        """Format Machine Learning IsolationForest and UEBA analytics."""
+        ml = extracted_data.get('ml_threat_data', {})
+        if not ml or not isinstance(ml, dict):
+            return "No ML threat scoring records retrieved.\n"
+        iso = ml.get('isolation_forest', {})
+        rf = ml.get('random_forest', {})
+        ueba = ml.get('ueba', {})
+        res = "### 🧠 Sentinel-AI Enterprise Machine Learning Engine (scikit-learn MCP)\n"
+        score = iso.get('anomaly_score', 0)
+        is_ano = iso.get('is_anomaly', False)
+        status_tag = "🚨 ANOMALOUS BEHAVIOR CONFIRMED" if is_ano or score > 40 else "✅ BENIGN BASELINE"
+        res += f"- **IsolationForest Anomaly Status:** **{status_tag}** (Score: `{score}/100`)\n"
+        res += f"- **RandomForest Triage Prediction:** Severity **{rf.get('predicted_severity', 'MEDIUM')}** (False Positive Probability: `{rf.get('false_positive_probability', 0.1):.1%}`)\n"
+        if iso.get('driving_factors'):
+            res += f"- **Driving Anomaly Features:** {', '.join(iso.get('driving_factors', []))}\n"
+        if ueba:
+            res += f"- **UEBA Behavioral Risk:** `{ueba.get('ueba_risk_score', 10.0)}/100` (User: `{ueba.get('entity_user', 'admin')}`, Host: `{ueba.get('entity_host', 'workstation')}`)\n"
+            if ueba.get('anomalous_factors'):
+                res += f"- **Behavioral Drift Factors:** {', '.join(ueba.get('anomalous_factors', []))}\n"
+        res += f"- **ML Pipeline:** IsolationForest (100 estimators) + RandomForest (120 depth 8 trees) + UEBA Baseline Deviation\n\n"
+        return res

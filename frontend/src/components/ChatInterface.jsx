@@ -114,17 +114,18 @@ const AI_MODELS = [
   { id: 'gemini', label: '✨ Gemini 1.5 Pro', badge: 'Ultra Context' },
 ];
 
-/* ─── Tactical Quick Command Strips (English + Tanglish) ──── */
+/* ─── Tactical Quick Command Strips (English + Tanglish + Free Tools) ──── */
 const QUICK_COMMANDS = [
+  { icon: '🦠', label: 'MalwareBazaar (Free)', text: 'Lookup hash 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f in MalwareBazaar', tag: 'abuse.ch' },
+  { icon: '🛡️', label: 'CISA KEV (Free)', text: 'Check if CVE-2023-34362 is listed in CISA KEV weaponized catalog', tag: 'CISA KEV' },
+  { icon: '🌐', label: 'Free IP Geolocation', text: 'Investigate IP 185.220.101.5 with free IP-API Geolocation and ASN', tag: 'IP-API' },
+  { icon: '🧠', label: 'ML Anomaly Engine', text: 'Run ML IsolationForest and RandomForest UEBA anomaly detection on off-hours brute force', tag: 'scikit-learn' },
+  { icon: '🗺️', label: 'MITRE TTP (Free)', text: 'Lookup MITRE ATT&CK technique T1059 Command and Scripting Interpreter', tag: 'MITRE' },
   { icon: '🚨', label: 'Wazuh Alerts', text: 'Show me live Wazuh security alerts', tag: 'SIEM' },
   { icon: '🛡️', label: 'Fleet Status', text: 'How many agents are connected in wazuh?', tag: 'Fleet' },
   { icon: '🚫', label: 'Block IP (SOAR)', text: 'Block malicious IP 185.220.101.45 via SOAR active defense', tag: 'SOAR' },
-  { icon: '🔒', label: 'Isolate Host', text: 'Isolate compromised host WS-FIN-04 via SOAR', tag: 'SOAR' },
   { icon: '🇮🇳', label: 'Alerts Check Pannu', text: 'Wazuh alert check pannu ethana alerts iruku', tag: 'Tamil' },
-  { icon: '🇮🇳', label: 'Agents Ethana?', text: 'Wazuh la ethana agents connect aagirukku?', tag: 'Tamil' },
   { icon: '🔍', label: 'Deep Investigate', text: 'Investigate recent high severity security alerts and correlate IOCs', tag: 'Forensics' },
-  { icon: '🌐', label: 'Threat Intel Sweep', text: 'Check IP 185.220.101.45 in VirusTotal and AbuseIPDB', tag: 'Intel' },
-  { icon: '⚡', label: 'Run Playbook', text: 'Run SOAR automated response playbook for active threats', tag: 'Auto-IR' },
 ];
 
 const WELCOME_MSG = {
@@ -132,16 +133,19 @@ const WELCOME_MSG = {
   role: 'assistant',
   text: `🛡️ **SentinelAI X — Autonomous SOC Hero & Security Copilot**
 
-I am fully synchronized with **Wazuh SIEM**, **SOAR Active Defense**, and global **Threat Intelligence** feeds via Model Context Protocol (MCP).
+I am linked to **Free & Open-Source SOC Tools**, **Wazuh SIEM**, **SOAR Active Defense**, and the **Enterprise Machine Learning Anomaly Engine** via the Model Context Protocol (MCP).
 
-### 🚀 What I Can Execute:
-- 🚨 **Live Wazuh SIEM Telemetry**: Real-time alerts, level distributions & fleet endpoint monitoring.
-- 🚫 **SOAR Active Defense**: IP blackholing, host network isolation, and automated incident response playbooks.
-- 🌐 **Multi-Tool IOC Enrichment**: Deep lookups via VirusTotal, AbuseIPDB, AlienVault OTX, and Shodan.
-- 🇮🇳 **Tanglish / Tamil Support**: Query naturally (e.g., *"Wazuh alert check pannu"*, *"ethana agent irruku"*, *"block pannu"*).`,
+### 🚀 Connected Free SOC Tools (Zero API Key Required):
+- 🦠 **abuse.ch MalwareBazaar & URLhaus**: Public malware binaries, SHA256 hashes, and C2 payload URLs.
+- 🛡️ **CISA KEV Catalog**: Authoritative US DHS database of actively weaponized vulnerabilities in the wild.
+- 🌐 **Free IP Geolocation & ASN (ip-api)**: City, country, ISP, ASN, reverse DNS, and datacenter proxy detection.
+- 🔍 **CIRCL & OSV CVE Search**: Free vulnerability metrics, CVSS v3 vectors, and CWE definitions.
+- 🗺️ **MITRE ATT&CK Enterprise Matrix**: Tactical TTP behaviors, detection analytics, and defensive mitigations.
+- 🧠 **Sentinel-AI ML Threat Engine**: Real-time IsolationForest anomaly scoring, RandomForest severity prediction & UEBA drift.
+- 🚨 **Wazuh SIEM & SOAR Active Defense**: Endpoint log correlation, fleet monitoring, and automated threat containment.`,
   time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   isWelcome: true,
-  tools_used: ['Wazuh', 'SOAR', 'VirusTotal', 'AbuseIPDB'],
+  tools_used: ['MalwareBazaar', 'CISA_KEV', 'IP_Intel', 'CVE_Search', 'MITRE_ATTACK', 'ML_Threat_Engine', 'Wazuh', 'SOAR'],
 };
 
 /* ─── Typewriter Animation Hook ───────────────────────────── */
@@ -906,11 +910,22 @@ const ChatInterface = () => {
                   gap: 4
                 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-                  MCP ONLINE
+                  16 MCP TOOLS
+                </span>
+                <span style={{
+                  background: 'rgba(56,189,248,0.16)',
+                  border: '1px solid rgba(56,189,248,0.4)',
+                  color: '#38bdf8',
+                  padding: '2px 8px',
+                  borderRadius: 12,
+                  fontSize: '0.62rem',
+                  fontWeight: 800
+                }}>
+                  6 FREE SOC TOOLS LINKED
                 </span>
               </div>
               <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: 2 }}>
-                Wazuh SIEM • VirusTotal • AbuseIPDB • SOAR Active Defense • Windows Telemetry
+                MalwareBazaar • CISA KEV • IP-API • CIRCL CVE • MITRE ATT&CK • ML Engine • Wazuh SIEM • SOAR
               </div>
             </div>
           </div>
