@@ -26,7 +26,10 @@ response_orchestrator = AutomatedResponseOrchestrator()
 
 
 class InvestigationRequest(BaseModel):
-    query: str
+    query: Optional[str] = None
+    message: Optional[str] = None
+    model: Optional[str] = None
+    context: Optional[list] = None
 
 
 class CollaborativeSessionRequest(BaseModel):
@@ -68,7 +71,8 @@ class AutomatedResponseRequest(BaseModel):
 
 @router.post("/investigate")
 async def investigate(req: InvestigationRequest):
-    result = service.analyze_query(req.query)
+    user_query = req.query or req.message or ""
+    result = service.analyze_query(user_query)
     return result
 
 
