@@ -4,16 +4,13 @@ import { cyberAudio } from '../utils/cyberSound';
 
 const MENU_ITEMS = [
   { id: 'home', icon: '🏠', label: 'SOC Command Center', badge: 'HUD', shortcut: '1' },
-  { id: 'simulator', icon: '⚡', label: 'Cyber Range Simulator', badge: 'RED/BLUE', shortcut: '2' },
-  { id: 'mldetection', icon: '🧠', label: 'ML Threat Detection', badge: 'UEBA', shortcut: 'M' },
-  { id: 'soar', icon: '🛡️', label: 'SOAR Active Defense', badge: 'AUTO', shortcut: '3' },
-  { id: 'mitre', icon: '🗺️', label: 'MITRE ATT&CK Matrix', badge: 'TTP', shortcut: '4' },
-  { id: 'chat', icon: '🤖', label: 'AI Security Copilot', badge: 'SWARM', shortcut: '5' },
-  { id: 'alerts', icon: '🚨', label: 'Real Wazuh Alerts', badge: 'LIVE', shortcut: '6' },
-  { id: 'investigation', icon: '🔍', label: 'Live AI Investigation', badge: 'DEEP', shortcut: '7' },
-  { id: 'intel', icon: '🌐', label: 'Threat Intel Feeds', badge: 'IOC', shortcut: '8' },
-  { id: 'reports', icon: '📄', label: 'Forensic Reports', badge: 'PDF', shortcut: '9' },
-  { id: 'swarm', icon: '🐝', label: 'AI Swarm & STIX 2.1', badge: 'AGENTIC', shortcut: '0' },
+  { id: 'chat', icon: '🤖', label: 'AI Security Copilot', badge: 'HERO', shortcut: '2' },
+  { id: 'mldetection', icon: '🧠', label: 'ML Threat Detection', badge: 'UEBA', shortcut: '3' },
+  { id: 'alerts', icon: '🚨', label: 'Real Wazuh Alerts', badge: 'LIVE', shortcut: '4' },
+  { id: 'investigation', icon: '🔍', label: 'Live AI Investigation', badge: 'DEEP', shortcut: '5' },
+  { id: 'intel', icon: '🌐', label: 'Threat Intel Feeds', badge: 'IOC', shortcut: '6' },
+  { id: 'reports', icon: '📄', label: 'Forensic Reports', badge: 'PDF', shortcut: '7' },
+  { id: 'swarm', icon: '🐝', label: 'AI Swarm & STIX 2.1', badge: 'AGENTIC', shortcut: '8' },
 ];
 
 const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
@@ -31,12 +28,12 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
       gap: 12,
       padding: collapsed ? '10px 0' : '10px 14px',
       marginBottom: 3,
-      borderRadius: 10,
-      border: isActive ? '1px solid var(--primary-color, #00f5d4)' : '1px solid transparent',
+      borderRadius: 8,
+      border: isActive ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
       background: isActive
-        ? 'linear-gradient(135deg, rgba(0, 245, 212, 0.18), rgba(139, 92, 246, 0.12))'
+        ? 'rgba(59, 130, 246, 0.15)'
         : 'transparent',
-      color: isActive ? 'var(--primary-color, #00f5d4)' : 'var(--text-secondary, #98c1d9)',
+      color: isActive ? '#3b82f6' : 'var(--text-secondary, #94a3b8)',
       cursor: 'pointer',
       fontSize: '0.8rem',
       fontWeight: isActive ? 700 : 500,
@@ -45,34 +42,32 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
       overflow: 'hidden',
       textAlign: 'left',
       justifyContent: collapsed ? 'center' : 'flex-start',
-      boxSizing: 'border-box',
-      boxShadow: isActive ? '0 0 16px rgba(0, 245, 212, 0.2)' : 'none'
+      boxSizing: 'border-box'
     }}
     onMouseOver={e => {
       if (!isActive) {
         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
         e.currentTarget.style.color = '#ffffff';
-        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
       }
     }}
     onMouseOut={e => {
       if (!isActive) {
         e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'var(--text-secondary, #98c1d9)';
+        e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)';
         e.currentTarget.style.borderColor = 'transparent';
       }
     }}
   >
-    {/* Active Left Neon Beam */}
+    {/* Active Left Indicator */}
     {isActive && (
       <div style={{
         position: 'absolute',
         left: 0,
-        top: '15%',
-        height: '70%',
+        top: '20%',
+        height: '60%',
         width: 3,
-        background: 'var(--primary-color, #00f5d4)',
-        boxShadow: '0 0 10px var(--primary-color, #00f5d4)',
+        background: '#3b82f6',
         borderRadius: '0 3px 3px 0'
       }} />
     )}
@@ -80,9 +75,7 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
     {/* Module Icon */}
     <span style={{
       fontSize: 18,
-      flexShrink: 0,
-      filter: isActive ? 'drop-shadow(0 0 8px var(--primary-color, #00f5d4))' : 'none',
-      transition: 'filter 150ms'
+      flexShrink: 0
     }}>
       {item.icon}
     </span>
@@ -95,7 +88,8 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           fontSize: '0.78rem',
-          letterSpacing: '-0.01em'
+          letterSpacing: '-0.01em',
+          color: isActive ? '#ffffff' : 'inherit'
         }}>
           {item.label}
         </span>
@@ -105,8 +99,8 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
             fontWeight: 800,
             padding: '1px 5px',
             borderRadius: 4,
-            background: isActive ? 'rgba(0, 245, 212, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-            color: isActive ? 'var(--primary-color, #00f5d4)' : 'rgba(255, 255, 255, 0.4)',
+            background: isActive ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+            color: isActive ? '#60a5fa' : 'rgba(255, 255, 255, 0.4)',
             fontFamily: 'JetBrains Mono, monospace'
           }}>
             {item.badge}
@@ -194,12 +188,12 @@ const Navigation = ({ currentView, setCurrentView, user, sidebarCollapsed, setSi
                 </div>
                 <div style={{
                   fontSize: '0.58rem',
-                  color: 'var(--primary-color, #00f5d4)',
+                  color: 'var(--primary-color, #3b82f6)',
                   letterSpacing: '0.14em',
                   fontWeight: 800,
                   fontFamily: 'JetBrains Mono, monospace'
                 }}>
-                  FLAGSHIP CYBER SOC v2.5
+                  ENTERPRISE CYBER SOC v2.5
                 </div>
               </div>
             )}
@@ -323,8 +317,8 @@ const Navigation = ({ currentView, setCurrentView, user, sidebarCollapsed, setSi
               textAlign: 'right',
               fontFamily: 'JetBrains Mono, monospace'
             }}>
-              <div>SOAR: ARMED</div>
-              <div style={{ color: '#10b981' }}>● 100% SECURE</div>
+              <div>SIEM: ONLINE</div>
+              <div style={{ color: '#10b981' }}>● 100% OPERATIONAL</div>
             </div>
           </div>
         </div>

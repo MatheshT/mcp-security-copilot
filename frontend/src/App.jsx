@@ -13,9 +13,6 @@ const InvestigationDashboard = lazy(() => import('./components/InvestigationDash
 const ReportsDashboard = lazy(() => import('./components/ReportsDashboard'));
 const Alerts = lazy(() => import('./components/detection/Alerts'));
 const ThreatIntelDashboard = lazy(() => import('./components/ThreatIntelDashboard'));
-const CyberRange = lazy(() => import('./components/CyberRange'));
-const SOARPanel = lazy(() => import('./components/SOARPanel'));
-const MitreMatrix = lazy(() => import('./components/MitreMatrix'));
 const SwarmHub = lazy(() => import('./components/SwarmHub'));
 const MLThreatDetection = lazy(() => import('./components/MLThreatDetection'));
 
@@ -29,22 +26,21 @@ const PageLoader = () => (
     gap: 16
   }}>
     <div style={{
-      width: 48,
-      height: 48,
+      width: 44,
+      height: 44,
       borderRadius: '50%',
-      border: '3px solid rgba(0, 245, 212, 0.2)',
-      borderTopColor: 'var(--primary-color, #00f5d4)',
-      boxShadow: '0 0 16px var(--primary-color, #00f5d4)',
+      border: '3px solid rgba(59, 130, 246, 0.2)',
+      borderTopColor: '#3b82f6',
       animation: 'spin-fast 0.65s linear infinite'
     }} />
     <div style={{
-      color: 'var(--primary-color, #00f5d4)',
+      color: '#94a3b8',
       fontSize: '0.78rem',
-      fontWeight: 800,
-      letterSpacing: '0.14em',
+      fontWeight: 700,
+      letterSpacing: '0.1em',
       fontFamily: 'JetBrains Mono, monospace'
     }}>
-      INITIALIZING SENTINEL-AI ENTERPRISE SOC GATEWAY…
+      LOADING ENTERPRISE SOC MODULE…
     </div>
   </div>
 );
@@ -67,23 +63,21 @@ function App() {
     localStorage.setItem('sentinel_scanlines', scanlinesActive ? 'true' : 'false');
   }, [scanlinesActive]);
 
-  // Alt + 1..9 fast navigation hotkeys
+  // Alt + 1..8 fast navigation hotkeys
   useEffect(() => {
     const handleGlobalHotkeys = (e) => {
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
         const viewMap = {
           '1': 'home',
-          '2': 'simulator',
+          '2': 'chat',
+          '3': 'mldetection',
+          '4': 'alerts',
+          '5': 'investigation',
+          '6': 'intel',
+          '7': 'reports',
+          '8': 'swarm',
           'm': 'mldetection',
-          'M': 'mldetection',
-          '3': 'soar',
-          '4': 'mitre',
-          '5': 'chat',
-          '6': 'alerts',
-          '7': 'investigation',
-          '8': 'intel',
-          '9': 'reports',
-          '0': 'swarm'
+          'M': 'mldetection'
         };
         if (viewMap[e.key]) {
           e.preventDefault();
@@ -99,11 +93,8 @@ function App() {
   const renderView = () => {
     switch (currentView) {
       case 'home': return <HomeDashboard setCurrentView={setCurrentView} />;
-      case 'simulator': return <CyberRange />;
-      case 'mldetection': return <MLThreatDetection />;
-      case 'soar': return <SOARPanel />;
-      case 'mitre': return <MitreMatrix />;
       case 'chat': return <ChatInterface />;
+      case 'mldetection': return <MLThreatDetection />;
       case 'alerts': return <Alerts />;
       case 'investigation': return <InvestigationDashboard />;
       case 'intel': return <ThreatIntelDashboard />;
@@ -118,25 +109,23 @@ function App() {
     <div
       className={scanlinesActive ? 'cyber-scanlines-active' : ''}
       style={{
-        background: 'var(--bg-deepest, #02040a)',
-        color: 'var(--text-primary, #e0fbfc)',
+        background: 'var(--bg-deepest, #0b0f19)',
+        color: 'var(--text-primary, #f8fafc)',
         minHeight: '100vh',
         display: 'flex',
         position: 'relative',
         overflowX: 'hidden'
       }}
     >
-      {/* Dynamic Cyber Grid & Radiant Field Overlay */}
+      {/* Clean Subtle Grid Overlay */}
       <div style={{
         position: 'fixed',
         inset: 0,
         backgroundImage: `
-          radial-gradient(circle at 18% 22%, rgba(0, 245, 212, 0.07) 0%, transparent 45%),
-          radial-gradient(circle at 82% 78%, rgba(139, 92, 246, 0.08) 0%, transparent 45%),
-          linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px)
+          linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px)
         `,
-        backgroundSize: '100% 100%, 100% 100%, 36px 36px, 36px 36px',
+        backgroundSize: '36px 36px',
         pointerEvents: 'none',
         zIndex: 0
       }} />

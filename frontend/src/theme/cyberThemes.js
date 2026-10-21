@@ -4,6 +4,31 @@
 // ==============================================================
 
 export const CYBER_THEMES = {
+  slate: {
+    id: 'slate',
+    name: 'Enterprise Slate',
+    subtitle: 'CrowdStrike Dark & Enterprise Blue',
+    icon: '🛡️',
+    accent: '#3b82f6',
+    secondary: '#6366f1',
+    tertiary: '#0ea5e9',
+    bgDeep: '#0b0f19',
+    bgPrimary: '#0f172a',
+    bgSecondary: '#1e293b',
+    bgElevated: '#334155',
+    glass: 'rgba(15, 23, 42, 0.9)',
+    glassBorder: 'rgba(255, 255, 255, 0.08)',
+    glassBorderHover: 'rgba(59, 130, 246, 0.4)',
+    glow: 'none',
+    textPrimary: '#f8fafc',
+    textSecondary: '#94a3b8',
+    textMuted: '#64748b',
+    gradientPrimary: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    gradientAccent: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+    gradientSurface: 'linear-gradient(180deg, #1e293b, #0f172a)',
+    badgeBg: 'rgba(59, 130, 246, 0.12)',
+    badgeColor: '#3b82f6',
+  },
   quantum: {
     id: 'quantum',
     name: 'Neo Quantum',
@@ -140,13 +165,13 @@ export const DEFCON_LEVELS = [
 ];
 
 export const applyThemeToDom = (themeId) => {
-  const theme = CYBER_THEMES[themeId] || CYBER_THEMES.quantum;
+  const theme = CYBER_THEMES[themeId] || CYBER_THEMES.slate;
   const root = document.documentElement;
 
   root.style.setProperty('--primary-color', theme.accent);
   root.style.setProperty('--accent-primary', theme.accent);
   root.style.setProperty('--accent-secondary', theme.secondary);
-  root.style.setProperty('--accent-cyan', theme.accent);
+  root.style.setProperty('--accent-cyan', '#38bdf8');
   root.style.setProperty('--accent-violet', theme.secondary);
 
   root.style.setProperty('--bg-deepest', theme.bgDeep);
@@ -167,10 +192,14 @@ export const applyThemeToDom = (themeId) => {
   root.style.setProperty('--gradient-primary', theme.gradientPrimary);
   root.style.setProperty('--gradient-accent', theme.gradientAccent);
 
-  localStorage.setItem('sentinel_cyber_theme', themeId);
+  localStorage.setItem('sentinel_cyber_theme', themeId || 'slate');
 };
 
 export const getStoredTheme = () => {
-  if (typeof window === 'undefined') return 'quantum';
-  return localStorage.getItem('sentinel_cyber_theme') || 'quantum';
+  if (typeof window === 'undefined') return 'slate';
+  const stored = localStorage.getItem('sentinel_cyber_theme');
+  if (!stored || stored === 'quantum') {
+    return 'slate';
+  }
+  return stored;
 };

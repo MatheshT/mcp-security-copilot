@@ -24,6 +24,7 @@ from .routes.swarm import router as swarm_router
 from .routes.stix_export import router as stix_router
 from .routes.ml_detection import router as ml_router
 from .routes.mcp_routes import router as mcp_router
+from .routes.report import router as report_router
 from .database import init_db
 from .middleware.error_handler import ErrorHandlerMiddleware, SecurityHeadersMiddleware, RequestLoggingMiddleware
 from .middleware.security import InputSanitizationMiddleware, RequestSizeMiddleware
@@ -124,6 +125,7 @@ app.include_router(swarm_router, prefix="/api")
 app.include_router(stix_router, prefix="/api")
 app.include_router(ml_router, prefix="/api")
 app.include_router(mcp_router, prefix="/api")
+app.include_router(report_router, prefix="/api")
 
 
 @app.get('/health', summary='Health check endpoint')

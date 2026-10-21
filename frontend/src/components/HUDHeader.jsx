@@ -4,25 +4,22 @@ import { CYBER_THEMES, DEFCON_LEVELS, applyThemeToDom, getStoredTheme } from '..
 import { cyberAudio } from '../utils/cyberSound';
 
 const TICKER_ITEMS = [
-  { text: '🛡️ SOAR PLAYBOOK EXECUTED: C2 Beacon 185.220.101.5 Blackholed (Firewall Rule #892)', tag: 'AUTONOMOUS', color: '#10b981' },
-  { text: '⚡ CYBER RANGE: LockBit 3.0 Ransomware Scenario Ready for Emulation', tag: 'SIMULATION', color: '#8b5cf6' },
-  { text: '🚨 WAZUH DETECTED: Privileged Token Manipulation on DC-PRIMARY-01 (T1134)', tag: 'ALERT', color: '#ef4444' },
-  { text: '🌐 THREAT INTEL: 48 New IOCs Ingested from AlienVault OTX & AbuseIPDB', tag: 'INTEL', color: '#06b6d4' },
-  { text: '🤖 SENTINEL-AI SWARM: Autonomous SOC Agents Health at 99.8% Efficiency', tag: 'AI CORE', color: '#00f5d4' },
+  { text: '🧠 ML UEBA: Isolation Forest flagged anomalous token issuance on DC-PRIMARY-01', tag: 'UEBA', color: '#3b82f6' },
+  { text: '🤖 AI COPILOT: 16 MCP Free SOC Intelligence Tools Online & Ready', tag: 'COPILOT', color: '#10b981' },
+  { text: '🚨 WAZUH SIEM: Live agent telemetry synchronized across all endpoints', tag: 'SIEM', color: '#0ea5e9' },
+  { text: '🌐 THREAT INTEL: AlienVault OTX & AbuseIPDB Feeds ingested successfully', tag: 'INTEL', color: '#6366f1' },
+  { text: '🐝 AI SWARM: Autonomous Multi-Agent Forensic Correlation Engine Active', tag: 'SWARM', color: '#8b5cf6' },
 ];
 
 const MODULE_OPTIONS = [
   { id: 'home', label: 'SOC Command Center', icon: '🏠', hotkey: '1' },
-  { id: 'simulator', label: 'Cyber Range Simulator (Red/Blue Team)', icon: '⚡', hotkey: '2' },
-  { id: 'mldetection', label: 'ML Threat Detection & UEBA Engine', icon: '🧠', hotkey: 'M' },
-  { id: 'soar', label: 'SOAR Autonomous Active Defense', icon: '🛡️', hotkey: '3' },
-  { id: 'mitre', label: 'MITRE ATT&CK Matrix Navigator', icon: '🗺️', hotkey: '4' },
-  { id: 'chat', label: 'AI Security Copilot Chat', icon: '🤖', hotkey: '5' },
-  { id: 'alerts', label: 'Live Alerts & Triage Console', icon: '🚨', hotkey: '6' },
-  { id: 'investigation', label: 'Autonomous AI Investigation', icon: '🔍', hotkey: '7' },
-  { id: 'intel', label: 'Global Threat Intelligence', icon: '🌐', hotkey: '8' },
-  { id: 'reports', label: 'Executive Threat Reports', icon: '📄', hotkey: '9' },
-  { id: 'swarm', label: 'Autonomous AI Swarm & STIX 2.1 Sharing', icon: '🐝', hotkey: '0' },
+  { id: 'chat', label: 'AI Security Copilot Chat (Hero Feature)', icon: '🤖', hotkey: '2' },
+  { id: 'mldetection', label: 'ML Threat Detection & UEBA Engine', icon: '🧠', hotkey: '3' },
+  { id: 'alerts', label: 'Live Alerts & Triage Console', icon: '🚨', hotkey: '4' },
+  { id: 'investigation', label: 'Autonomous AI Investigation', icon: '🔍', hotkey: '5' },
+  { id: 'intel', label: 'Global Threat Intelligence', icon: '🌐', hotkey: '6' },
+  { id: 'reports', label: 'Executive Threat Reports', icon: '📄', hotkey: '7' },
+  { id: 'swarm', label: 'Autonomous AI Swarm & STIX 2.1 Sharing', icon: '🐝', hotkey: '8' },
 ];
 
 const HUDHeader = ({ currentView, setCurrentView, scanlinesActive, setScanlinesActive }) => {

@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/report", tags=["report"])
+router = APIRouter(prefix="/report", tags=["report"])
 pdf_service = PDFReportService()
 
 @router.get("/list")

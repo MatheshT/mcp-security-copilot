@@ -31,11 +31,11 @@ const AI_SWARM_AGENTS = [
   { id: 'alpha', name: 'Sentinel-Alpha', role: 'Stream Telemetry & Ingestion', throughput: '28,400 EPS', latency: '4ms', status: 'Optimal', icon: '📡' },
   { id: 'beta', name: 'Sentinel-Beta', role: 'Neural Threat Correlation', throughput: 'ML Matrix v4.2', latency: '12ms', status: 'Deep Scanning', icon: '🧠' },
   { id: 'gamma', name: 'Sentinel-Gamma', role: 'Autonomous Threat Hunter', throughput: '48 Active Hunts', latency: '18ms', status: 'Patrolling', icon: '🎯' },
-  { id: 'omega', name: 'Sentinel-Omega', role: 'SOAR Active Containment', throughput: '< 15s MTTD', latency: '1ms', status: 'Armed & Ready', icon: '🛡️' }
+  { id: 'omega', name: 'Sentinel-Omega', role: 'Autonomous Containment & Triage', throughput: '< 15s MTTD', latency: '1ms', status: 'Armed & Ready', icon: '🛡️' }
 ];
 
 const INITIAL_LOGS = [
-  { id: 1, time: '19:28:44', event: 'SOAR Autonomous Lockdown executed on WS-FIN-04', level: 'HIGH', ip: '192.168.10.45', module: 'SOAR' },
+  { id: 1, time: '19:28:44', event: 'Autonomous containment rule injected for WS-FIN-04', level: 'HIGH', ip: '192.168.10.45', module: 'CONTAINMENT' },
   { id: 2, time: '19:28:12', event: 'Wazuh Agent 002 (DC-PRIMARY) heartbeat verified with zero drift', level: 'INFO', ip: '192.168.1.10', module: 'WAZUH' },
   { id: 3, time: '19:27:50', event: 'Cobalt Strike C2 beacon signature matched in memory cache', level: 'CRITICAL', ip: '185.220.101.5', module: 'AI-SWARM' },
   { id: 4, time: '19:27:01', event: 'Privilege escalation attempt via Token SeDebugPrivilege intercepted', level: 'HIGH', ip: 'corp\\jdoe', module: 'DEFENSE' },
@@ -248,37 +248,37 @@ const HomeDashboard = ({ setCurrentView }) => {
             letterSpacing: '-0.02em',
             fontFamily: 'Inter, sans-serif'
           }}>
-            SentinelAI X • Next-Gen Cyber SOC Operating System
+            SentinelAI X • Enterprise Cyber SOC Operating System
           </h1>
-          <p style={{ color: 'var(--text-secondary, #98c1d9)', fontSize: '0.85rem', marginTop: 4, margin: 0 }}>
-            Unified Real-Time Orchestration across Wazuh SIEM, MITRE ATT&CK Matrix, Autonomous SOAR & Swarm Intelligence
+          <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '0.85rem', marginTop: 4, margin: 0 }}>
+            Unified Real-Time Security Operations across Wazuh SIEM, ML Threat Engine & AI Security Copilot
           </p>
         </div>
 
         {/* Global Security Readiness Index */}
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <div style={{
-            background: 'rgba(6, 9, 16, 0.85)',
-            border: '1px solid var(--glass-border, rgba(0, 245, 212, 0.25))',
+            background: 'rgba(17, 24, 39, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
             borderRadius: 12,
             padding: '12px 20px',
             textAlign: 'center',
-            boxShadow: '0 8px 24px rgba(0, 245, 212, 0.15)'
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
           }}>
-            <div style={{ fontSize: '0.65rem', color: 'var(--primary-color, #00f5d4)', fontWeight: 800, letterSpacing: '0.08em' }}>DEFENSE SHIELD HEALTH</div>
+            <div style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 800, letterSpacing: '0.08em' }}>DEFENSE SHIELD HEALTH</div>
             <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#38bdf8', lineHeight: 1.2 }}>99.8%</div>
             <div style={{ fontSize: '0.62rem', color: '#10b981', marginTop: 2 }}>● Perimeter Impenetrable</div>
           </div>
 
           <div style={{
-            background: 'rgba(6, 9, 16, 0.85)',
-            border: '1px solid rgba(139, 92, 246, 0.3)',
+            background: 'rgba(17, 24, 39, 0.85)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
             borderRadius: 12,
             padding: '12px 20px',
             textAlign: 'center',
-            boxShadow: '0 8px 24px rgba(139, 92, 246, 0.15)'
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
           }}>
-            <div style={{ fontSize: '0.65rem', color: '#c4b5fd', fontWeight: 800, letterSpacing: '0.08em' }}>AUTONOMOUS BLOCKS TODAY</div>
+            <div style={{ fontSize: '0.65rem', color: '#c4b5fd', fontWeight: 800, letterSpacing: '0.08em' }}>ANOMALIES TRIAGED TODAY</div>
             <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#a78bfa', lineHeight: 1.2 }}>
               {stats.mitigatedToday.toLocaleString()}
             </div>
@@ -296,13 +296,13 @@ const HomeDashboard = ({ setCurrentView }) => {
         padding: '2px 0'
       }}>
         {[
+          { label: '🤖 AI Security Copilot (Hero Feature)', view: 'chat', desc: '16 MCP SOC Tools' },
           { label: '🧠 ML Threat & UEBA Engine', view: 'mldetection', desc: 'Anomaly Detection' },
-          { label: '⚡ Cyber Range Attack Simulation', view: 'simulator', desc: 'Emulate Ransomware' },
-          { label: '🛡️ SOAR Autonomous Defense', view: 'soar', desc: 'Active Playbooks' },
-          { label: '🤖 AI Copilot Threat Chat', view: 'chat', desc: 'Ask SentinelAI' },
           { label: '🚨 Live Real Wazuh Alerts', view: 'alerts', desc: 'Real Telemetry' },
-          { label: '🔍 Deep Forensics Investigation', view: 'investigation', desc: 'Neural Triage' },
-          { label: '📄 Executive Forensic Reports', view: 'reports', desc: 'PDF / JSON Dossier' }
+          { label: '🔍 Live AI Investigation', view: 'investigation', desc: 'Neural Triage' },
+          { label: '🌐 Threat Intel Feeds', view: 'intel', desc: 'Global IOCs' },
+          { label: '📄 Forensic Reports', view: 'reports', desc: 'PDF / JSON Dossier' },
+          { label: '🐝 AI Swarm & STIX 2.1', view: 'swarm', desc: 'Multi-Agent Defense' }
         ].map((action, i) => (
           <button
             key={i}
@@ -376,20 +376,20 @@ const HomeDashboard = ({ setCurrentView }) => {
           </div>
         </div>
 
-        {/* Active SOAR Mitigation */}
-        <div className="cyber-panel" style={{ padding: SPACING.xl, cursor: 'pointer' }} onClick={() => handleActionClick('soar')}>
+        {/* Active ML Threat Engine */}
+        <div className="cyber-panel" style={{ padding: SPACING.xl, cursor: 'pointer' }} onClick={() => handleActionClick('mldetection')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm }}>
-            <span style={{ fontSize: '0.75rem', color: colors.textSecondary, fontWeight: 600 }}>SOAR Response Engine</span>
-            <span style={{ background: 'rgba(6, 182, 212, 0.15)', color: '#06b6d4', padding: '2px 8px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>
-              KILL-SWITCH ARMED
+            <span style={{ fontSize: '0.75rem', color: colors.textSecondary, fontWeight: 600 }}>ML Threat Engine</span>
+            <span style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', padding: '2px 8px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700 }}>
+              UEBA ONLINE
             </span>
           </div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#06b6d4', lineHeight: 1 }}>
-            &lt; 15s <span style={{ fontSize: '1rem', color: '#67e8f9', fontWeight: 500 }}>MTTC</span>
+          <div style={{ fontSize: '2.4rem', fontWeight: 900, color: '#3b82f6', lineHeight: 1 }}>
+            99.4% <span style={{ fontSize: '1rem', color: '#93c5fd', fontWeight: 500 }}>Accuracy</span>
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#67e8f9', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>⚡ 4 Autonomous Playbooks Ready</span>
-            <span style={{ marginLeft: 'auto', color: '#818cf8', fontWeight: 600 }}>Deploy →</span>
+          <div style={{ fontSize: '0.72rem', color: '#93c5fd', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>🧠 Isolation Forest & Anomaly Scoring</span>
+            <span style={{ marginLeft: 'auto', color: '#3b82f6', fontWeight: 600 }}>Inspect →</span>
           </div>
         </div>
       </div>
@@ -484,72 +484,72 @@ const HomeDashboard = ({ setCurrentView }) => {
                 </span>
               </div>
               <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 4 }}>
-                Payload: <strong style={{ color: '#a5f3fc' }}>{selectedTarget.type}</strong>
+                Payload: <strong style={{ color: '#f8fafc' }}>{selectedTarget.type}</strong>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                 <button
-                  onClick={() => handleActionClick('soar')}
+                  onClick={() => handleActionClick('investigation')}
                   style={{
                     flex: 1,
-                    background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                    color: '#fca5a5',
+                    background: 'rgba(59, 130, 246, 0.15)',
+                    border: '1px solid rgba(59, 130, 246, 0.35)',
+                    color: '#93c5fd',
                     borderRadius: 6,
-                    padding: '4px 8px',
+                    padding: '6px 8px',
                     fontSize: '0.68rem',
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
-                  🛡️ Isolate IP
+                  🔍 Deep Investigation
                 </button>
                 <button
-                  onClick={() => handleActionClick('simulator')}
+                  onClick={() => handleActionClick('intel')}
                   style={{
                     flex: 1,
-                    background: 'rgba(99, 102, 241, 0.2)',
-                    border: '1px solid rgba(99, 102, 241, 0.4)',
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    border: '1px solid rgba(99, 102, 241, 0.35)',
                     color: '#c4b5fd',
                     borderRadius: 6,
-                    padding: '4px 8px',
+                    padding: '6px 8px',
                     fontSize: '0.68rem',
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
-                  ⚡ Emulate in Range
+                  🌐 Query Threat Intel
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* MITRE ATT&CK Cyber Kill Chain Progress */}
+        {/* Cyber Kill Chain Progression */}
         <div className="cyber-panel" style={{ padding: SPACING.xl, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#a5f3fc' }}>
-                  🗺️ MITRE ATT&CK • Cyber Kill Chain Infiltration Matrix
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#f8fafc' }}>
+                  🛡️ Cyber Kill Chain Progression & Defense Matrix
                 </div>
-                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                  Real-time containment per kill-chain phase across corporate network
+                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                  Real-time detection and containment per kill-chain phase across corporate network
                 </div>
               </div>
               <button
-                onClick={() => handleActionClick('mitre')}
+                onClick={() => handleActionClick('alerts')}
                 style={{
-                  background: 'rgba(99, 102, 241, 0.15)',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
-                  color: '#a5b4fc',
-                  padding: '4px 12px',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  color: '#93c5fd',
+                  padding: '6px 14px',
                   borderRadius: 6,
                   fontSize: '0.72rem',
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
-                Full Matrix View →
+                Triage Live Alerts →
               </button>
             </div>
 
@@ -753,22 +753,22 @@ const HomeDashboard = ({ setCurrentView }) => {
           </div>
         </div>
 
-        {/* Tactical 1-Click Action Dispatch */}
+        {/* Tactical Action Dispatch */}
         <div className="cyber-panel" style={{ padding: SPACING.xl, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#a5f3fc', marginBottom: 4 }}>
-              ⚡ Tactical Command Dispatch
+            <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#f8fafc', marginBottom: 4 }}>
+              ⚡ Tactical Operations Dispatch
             </div>
-            <div style={{ fontSize: '0.68rem', color: '#64748b', marginBottom: 14 }}>
-              Direct one-click execution into specialized security suites
+            <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: 14 }}>
+              Direct one-click execution into enterprise security suites
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
-                onClick={() => handleActionClick('simulator')}
+                onClick={() => handleActionClick('chat')}
                 style={{
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(99, 102, 241, 0.15))',
-                  border: '1px solid rgba(139, 92, 246, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(99, 102, 241, 0.15))',
+                  border: '1px solid rgba(59, 130, 246, 0.4)',
                   borderRadius: 10,
                   padding: '12px 14px',
                   color: '#ffffff',
@@ -779,21 +779,21 @@ const HomeDashboard = ({ setCurrentView }) => {
                   gap: 12,
                   transition: 'all 150ms'
                 }}
-                onMouseOver={e => e.currentTarget.style.borderColor = '#c084fc'}
-                onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.4)'}
+                onMouseOver={e => e.currentTarget.style.borderColor = '#60a5fa'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.4)'}
               >
-                <span style={{ fontSize: 24 }}>⚡</span>
+                <span style={{ fontSize: 24 }}>🤖</span>
                 <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Run Cyber Range Scenario</div>
-                  <div style={{ fontSize: '0.65rem', color: '#c4b5fd' }}>LockBit, Kerberoasting & APT29 Emulation</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f8fafc' }}>Query AI Security Copilot (Hero Feature)</div>
+                  <div style={{ fontSize: '0.65rem', color: '#93c5fd' }}>16 MCP Free SOC Intelligence Tools Online</div>
                 </div>
               </button>
 
               <button
-                onClick={() => handleActionClick('soar')}
+                onClick={() => handleActionClick('mldetection')}
                 style={{
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.15))',
-                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.12))',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
                   borderRadius: 10,
                   padding: '12px 14px',
                   color: '#ffffff',
@@ -805,20 +805,20 @@ const HomeDashboard = ({ setCurrentView }) => {
                   transition: 'all 150ms'
                 }}
                 onMouseOver={e => e.currentTarget.style.borderColor = '#34d399'}
-                onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.4)'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.35)'}
               >
-                <span style={{ fontSize: 24 }}>🛡️</span>
+                <span style={{ fontSize: 24 }}>🧠</span>
                 <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Deploy SOAR Active Playbook</div>
-                  <div style={{ fontSize: '0.65rem', color: '#6ee7b7' }}>Host Isolation & C2 Sinkholing</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f8fafc' }}>Run ML Anomaly Analysis</div>
+                  <div style={{ fontSize: '0.65rem', color: '#6ee7b7' }}>Isolation Forest, UEBA & Anomaly Scoring</div>
                 </div>
               </button>
 
               <button
-                onClick={() => handleActionClick('chat')}
+                onClick={() => handleActionClick('alerts')}
                 style={{
-                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(6, 182, 212, 0.15))',
-                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(245, 158, 11, 0.12))',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
                   borderRadius: 10,
                   padding: '12px 14px',
                   color: '#ffffff',
@@ -829,13 +829,38 @@ const HomeDashboard = ({ setCurrentView }) => {
                   gap: 12,
                   transition: 'all 150ms'
                 }}
-                onMouseOver={e => e.currentTarget.style.borderColor = '#818cf8'}
-                onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)'}
+                onMouseOver={e => e.currentTarget.style.borderColor = '#f87171'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.35)'}
               >
-                <span style={{ fontSize: 24 }}>💬</span>
+                <span style={{ fontSize: 24 }}>🚨</span>
                 <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Query AI Security Copilot</div>
-                  <div style={{ fontSize: '0.65rem', color: '#a5b4fc' }}>Deep Incident Investigation with Memory</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f8fafc' }}>Triage Live Wazuh Alerts</div>
+                  <div style={{ fontSize: '0.65rem', color: '#fca5a5' }}>Real Endpoint Telemetry & Severity Analysis</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleActionClick('investigation')}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.12))',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
+                  borderRadius: 10,
+                  padding: '12px 14px',
+                  color: '#ffffff',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  transition: 'all 150ms'
+                }}
+                onMouseOver={e => e.currentTarget.style.borderColor = '#a5b4fc'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.35)'}
+              >
+                <span style={{ fontSize: 24 }}>🔍</span>
+                <div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f8fafc' }}>Deep Incident Investigation</div>
+                  <div style={{ fontSize: '0.65rem', color: '#c4b5fd' }}>Automated Root Cause & Remediation Dossier</div>
                 </div>
               </button>
             </div>

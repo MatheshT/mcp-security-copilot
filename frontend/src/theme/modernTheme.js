@@ -5,38 +5,38 @@
 
 export const MODERN_COLORS = {
   // Backgrounds
-  background: '#060910',
-  backgroundDeep: '#04060d',
-  surface: '#0c1120',
-  surfaceLight: '#111827',
-  elevated: '#1a2236',
-  hover: '#243044',
+  background: '#0b0f19',
+  backgroundDeep: '#070a12',
+  surface: '#111827',
+  surfaceLight: '#1f2937',
+  elevated: '#1f2937',
+  hover: '#374151',
 
   // Glass
-  glass: 'rgba(12, 17, 32, 0.75)',
-  glassLight: 'rgba(30, 41, 59, 0.5)',
-  glassDark: 'rgba(4, 6, 13, 0.9)',
-  glassBorder: 'rgba(255, 255, 255, 0.06)',
-  glassBorderLight: 'rgba(255, 255, 255, 0.1)',
+  glass: 'rgba(17, 24, 39, 0.88)',
+  glassLight: 'rgba(31, 41, 55, 0.6)',
+  glassDark: 'rgba(11, 15, 25, 0.95)',
+  glassBorder: 'rgba(255, 255, 255, 0.08)',
+  glassBorderLight: 'rgba(255, 255, 255, 0.12)',
 
-  // Text
-  text: '#a5f3fc',
-  textSecondary: '#67e8f9',
-  textMuted: '#22d3ee',
-  textDim: '#06b6d4',
+  // Text - Clean, readable enterprise palette
+  text: '#f8fafc',
+  textSecondary: '#94a3b8',
+  textMuted: '#64748b',
+  textDim: '#475569',
   textBright: '#ffffff',
 
   // Primary
-  primary: '#6366f1',
-  primaryLight: '#818cf8',
-  primaryDark: '#4f46e5',
+  primary: '#3b82f6',
+  primaryLight: '#60a5fa',
+  primaryDark: '#2563eb',
 
   // Accents
-  violet: '#8b5cf6',
-  cyan: '#06b6d4',
+  violet: '#6366f1',
+  cyan: '#0ea5e9',
   teal: '#14b8a6',
   blue: '#3b82f6',
-  purple: '#a855f7',
+  purple: '#8b5cf6',
 
   // Status
   success: '#10b981',
@@ -49,22 +49,22 @@ export const MODERN_COLORS = {
   infoLight: '#60a5fa',
 
   // Severity
-  critical: '#dc2626',
+  critical: '#ef4444',
   high: '#f97316',
   medium: '#eab308',
-  low: '#22c55e',
+  low: '#10b981',
 
   // Gradients
-  gradientPrimary: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-  primaryGradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-  gradientAccent: 'linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4)',
-  gradientCyan: 'linear-gradient(135deg, #06b6d4, #14b8a6)',
+  gradientPrimary: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+  primaryGradient: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+  gradientAccent: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+  gradientCyan: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
   gradientDanger: 'linear-gradient(135deg, #ef4444, #dc2626)',
   gradientSuccess: 'linear-gradient(135deg, #10b981, #059669)',
   gradientWarning: 'linear-gradient(135deg, #f59e0b, #d97706)',
-  gradientAurora: 'linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4, #14b8a6)',
-  gradientMidnight: 'linear-gradient(135deg, #0c1120, #1a2236, #0c1120)',
-  gradientSubtle: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(139,92,246,0.05))',
+  gradientAurora: 'linear-gradient(135deg, #3b82f6, #6366f1, #0ea5e9)',
+  gradientMidnight: 'linear-gradient(135deg, #0f172a, #1e293b, #0f172a)',
+  gradientSubtle: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.05))',
 
   // Shadows
   shadowLight: '0 4px 16px rgba(0, 0, 0, 0.1)',
