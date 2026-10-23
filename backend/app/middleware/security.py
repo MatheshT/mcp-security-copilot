@@ -41,6 +41,23 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
         ]
     
     async def dispatch(self, request: Request, call_next: Callable):
+        # Exempt SOC investigation & security endpoints so analysts can query threat signatures & SQLi/XSS logs
+        exempt_prefixes = (
+            '/api/investigate',
+            '/api/chat',
+            '/api/v1/investigation',
+            '/api/v2/investigation',
+            '/api/log_analysis',
+            '/api/detection',
+            '/api/windows_logs',
+            '/api/mcp',
+            '/api/report',
+            '/api/ml',
+            '/api/upload',
+        )
+        if request.url.path.startswith(exempt_prefixes):
+            return await call_next(request)
+
         # Only sanitize POST, PUT, PATCH requests
         if request.method in ["POST", "PUT", "PATCH"]:
             # Read request body
