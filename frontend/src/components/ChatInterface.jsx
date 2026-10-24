@@ -175,28 +175,7 @@ const QUICK_COMMANDS = [
   { cat: 'tanglish', icon: '🇮🇳', label: 'IP Block Pannu', text: 'Intha IP 185.220.101.45 firewall la block pannu automated defense use panni', tag: 'Tamil' },
 ];
 
-const WELCOME_MSG = {
-  id: 1,
-  role: 'assistant',
-  text: `🛡️ **SentinelAI X — Autonomous SOC Hero & Security Copilot**
-
-I am linked to **16 Model Context Protocol (MCP) Tools** including **6 Free SOC Tools**, **Wazuh SIEM v4.14.7**, **Automated Threat Containment**, and the **scikit-learn Machine Learning Anomaly Engine**.
-
-### 🚀 Connected Free SOC Tools (100% Free / Zero API Keys Required):
-- 🦠 **abuse.ch MalwareBazaar & URLhaus**: Public malware binaries, SHA256 hashes, and C2 payload URLs.
-- 🛡️ **CISA KEV Catalog**: Authoritative US DHS database of actively weaponized vulnerabilities in the wild.
-- 🌐 **Free IP Geolocation & ASN (ip-api)**: City, country, ISP, ASN, reverse DNS, and datacenter proxy detection.
-- 🔍 **CIRCL & OSV CVE Search**: Free vulnerability metrics, CVSS v3 vectors, and CWE definitions.
-- 🗺️ **MITRE ATT&CK Enterprise Matrix**: Tactical TTP behaviors, detection analytics, and defensive mitigations.
-- 🧠 **Sentinel-AI ML Threat Engine**: Real-time IsolationForest anomaly scoring, RandomForest severity prediction & UEBA drift.
-- 🚨 **Wazuh SIEM & Automated Containment**: Endpoint log correlation, fleet monitoring, and automated threat containment.
-
-*Type any query below, click a quick command chip, or inspect the 16 linked MCP tools in the top header.*`,
-  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  isWelcome: true,
-  tools_used: ['MalwareBazaar', 'CISA_KEV', 'IP_Intel', 'CVE_Search', 'MITRE_ATTACK', 'ML_Threat_Engine', 'Wazuh', 'Containment'],
-};
-
+// Initial state is clean empty terminal
 /* ─── Typewriter Animation Hook ───────────────────────────── */
 const useTypewriter = (targetText, speed = 8) => {
   const [displayed, setDisplayed] = useState('');
@@ -333,23 +312,21 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
     padding: `${SPACING.md}px ${SPACING.xl}px`,
     position: 'relative',
     background: isUser
-      ? 'linear-gradient(135deg, #2563eb, #3b82f6)'
+      ? 'linear-gradient(135deg, #10b981, #059669)'
       : message.isError
         ? 'rgba(239, 68, 68, 0.12)'
-        : message.isWelcome
-          ? 'linear-gradient(180deg, #111827, #0f172a)'
-          : 'rgba(17, 24, 39, 0.95)',
+        : 'rgba(3, 12, 6, 0.96)',
     border: isUser
-      ? '1px solid rgba(255, 255, 255, 0.15)'
+      ? '1px solid rgba(52, 211, 153, 0.45)'
       : message.isError
         ? '1px solid rgba(239, 68, 68, 0.4)'
-        : '1px solid rgba(255, 255, 255, 0.08)',
+        : '1px solid rgba(16, 185, 129, 0.25)',
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
-    color: isUser ? '#ffffff' : MODERN_COLORS.text,
+    color: isUser ? '#ffffff' : '#ecfdf5',
     boxShadow: isUser
-      ? '0 6px 24px rgba(37, 99, 235, 0.3)'
-      : '0 6px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+      ? '0 6px 24px rgba(16, 185, 129, 0.35)'
+      : '0 6px 24px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(16, 185, 129, 0.08)',
     wordBreak: 'break-word',
     overflowWrap: 'anywhere',
   };
@@ -736,7 +713,7 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
 
 /* ─── Main ChatInterface Component ────────────────────────── */
 const ChatInterface = () => {
-  const [messages, setMessages] = useState([WELCOME_MSG]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState('sentinelai');
@@ -791,7 +768,7 @@ const ChatInterface = () => {
 
   const handleClear = useCallback(() => {
     cyberAudio.playClick();
-    setMessages([{ ...WELCOME_MSG, id: Date.now(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+    setMessages([]);
     setLatestAIId(null);
   }, []);
 
@@ -856,7 +833,7 @@ const ChatInterface = () => {
       const primaryUrl = getApiUrl('/api/investigate');
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
 
         const res = await fetch(primaryUrl, {
           method: 'POST',
@@ -878,7 +855,7 @@ const ChatInterface = () => {
         // Fallback: try /api/chat with fast 2.5s timeout
         try {
           const controller2 = new AbortController();
-          const timeoutId2 = setTimeout(() => controller2.abort(), 2500);
+          const timeoutId2 = setTimeout(() => controller2.abort(), 5000);
           const res2 = await fetch(getApiUrl('/api/chat'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -952,7 +929,11 @@ const ChatInterface = () => {
   const handleSend = useCallback((e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (e && e.stopPropagation) e.stopPropagation();
-    const q = input.trim() || 'What free SOC tools are connected?';
+    const q = input.trim();
+    if (!q) {
+      inputRef.current?.focus();
+      return;
+    }
     executeQuery(q);
   }, [input, executeQuery]);
 
@@ -1337,14 +1318,58 @@ const ChatInterface = () => {
           minHeight: 0
         }}
       >
-        {filteredMessages.map(msg => (
-          <MessageBubble
-            key={msg.id}
-            message={msg}
-            isLatestAI={msg.id === latestAIId && msg.role === 'assistant'}
-            onActionClick={executeQuery}
-          />
-        ))}
+        {filteredMessages.length === 0 ? (
+          <div style={{
+            margin: 'auto',
+            textAlign: 'center',
+            padding: '48px 20px',
+            maxWidth: 520,
+            userSelect: 'none'
+          }}>
+            <div style={{
+              width: 58,
+              height: 58,
+              borderRadius: '50%',
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              fontSize: '1.6rem',
+              color: '#10b981',
+              boxShadow: '0 0 24px rgba(16, 185, 129, 0.25)'
+            }}>
+              ⚡
+            </div>
+            <div style={{
+              fontSize: '1.15rem',
+              fontWeight: 800,
+              color: '#ecfdf5',
+              letterSpacing: '0.02em',
+              marginBottom: 8
+            }}>
+              SentinelAI Security Copilot Ready
+            </div>
+            <div style={{
+              fontSize: '0.84rem',
+              color: '#6ee7b7',
+              opacity: 0.85,
+              lineHeight: 1.6
+            }}>
+              Type your security question, IP address, CVE, or hash below — or select any tactical prompt chip above to begin.
+            </div>
+          </div>
+        ) : (
+          filteredMessages.map(msg => (
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              isLatestAI={msg.id === latestAIId && msg.role === 'assistant'}
+              onActionClick={executeQuery}
+            />
+          ))
+        )}
 
         {loading && <MCPProgressPipeline />}
 
