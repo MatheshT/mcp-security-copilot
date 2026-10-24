@@ -4,39 +4,39 @@
 // =============================================
 
 export const MODERN_COLORS = {
-  // Backgrounds
-  background: '#0b0f19',
-  backgroundDeep: '#070a12',
-  surface: '#111827',
-  surfaceLight: '#1f2937',
-  elevated: '#1f2937',
-  hover: '#374151',
+  // Backgrounds - Pure Obsidian & Matrix Black
+  background: '#000000',
+  backgroundDeep: '#020502',
+  surface: '#040b05',
+  surfaceLight: '#07150a',
+  elevated: '#0a1f0f',
+  hover: '#0f2f16',
 
   // Glass
-  glass: 'rgba(17, 24, 39, 0.88)',
-  glassLight: 'rgba(31, 41, 55, 0.6)',
-  glassDark: 'rgba(11, 15, 25, 0.95)',
-  glassBorder: 'rgba(255, 255, 255, 0.08)',
-  glassBorderLight: 'rgba(255, 255, 255, 0.12)',
+  glass: 'rgba(2, 8, 4, 0.92)',
+  glassLight: 'rgba(5, 18, 9, 0.7)',
+  glassDark: 'rgba(0, 0, 0, 0.98)',
+  glassBorder: 'rgba(16, 185, 129, 0.22)',
+  glassBorderLight: 'rgba(16, 185, 129, 0.4)',
 
-  // Text - Clean, readable enterprise palette
-  text: '#f8fafc',
-  textSecondary: '#94a3b8',
-  textMuted: '#64748b',
-  textDim: '#475569',
+  // Text - Clean, readable matrix green & white
+  text: '#ecfdf5',
+  textSecondary: '#a7f3d0',
+  textMuted: '#6ee7b7',
+  textDim: '#34d399',
   textBright: '#ffffff',
 
-  // Primary
-  primary: '#3b82f6',
-  primaryLight: '#60a5fa',
-  primaryDark: '#2563eb',
+  // Primary - Vibrant Emerald & Matrix Neon
+  primary: '#10b981',
+  primaryLight: '#34d399',
+  primaryDark: '#059669',
 
   // Accents
-  violet: '#6366f1',
-  cyan: '#0ea5e9',
+  violet: '#10b981',
+  cyan: '#00ff66',
   teal: '#14b8a6',
-  blue: '#3b82f6',
-  purple: '#8b5cf6',
+  blue: '#10b981',
+  purple: '#059669',
 
   // Status
   success: '#10b981',
@@ -45,8 +45,8 @@ export const MODERN_COLORS = {
   warningLight: '#fbbf24',
   danger: '#ef4444',
   dangerLight: '#f87171',
-  info: '#3b82f6',
-  infoLight: '#60a5fa',
+  info: '#00ff66',
+  infoLight: '#34d399',
 
   // Severity
   critical: '#ef4444',
@@ -55,21 +55,21 @@ export const MODERN_COLORS = {
   low: '#10b981',
 
   // Gradients
-  gradientPrimary: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-  primaryGradient: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-  gradientAccent: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-  gradientCyan: 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+  gradientPrimary: 'linear-gradient(135deg, #10b981, #059669)',
+  primaryGradient: 'linear-gradient(135deg, #10b981, #059669)',
+  gradientAccent: 'linear-gradient(135deg, #00ff66, #10b981, #059669)',
+  gradientCyan: 'linear-gradient(135deg, #00ff66, #10b981)',
   gradientDanger: 'linear-gradient(135deg, #ef4444, #dc2626)',
-  gradientSuccess: 'linear-gradient(135deg, #10b981, #059669)',
+  gradientSuccess: 'linear-gradient(135deg, #00ff66, #10b981)',
   gradientWarning: 'linear-gradient(135deg, #f59e0b, #d97706)',
-  gradientAurora: 'linear-gradient(135deg, #3b82f6, #6366f1, #0ea5e9)',
-  gradientMidnight: 'linear-gradient(135deg, #0f172a, #1e293b, #0f172a)',
-  gradientSubtle: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.05))',
+  gradientAurora: 'linear-gradient(135deg, #00ff66, #10b981, #059669)',
+  gradientMidnight: 'linear-gradient(135deg, #000000, #06150a, #000000)',
+  gradientSubtle: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(0,255,102,0.05))',
 
   // Shadows
-  shadowLight: '0 4px 16px rgba(0, 0, 0, 0.1)',
-  shadowMedium: '0 8px 24px rgba(0, 0, 0, 0.15)',
-  shadowHeavy: '0 16px 48px rgba(0, 0, 0, 0.2)',
+  shadowLight: '0 4px 16px rgba(0, 0, 0, 0.6)',
+  shadowMedium: '0 8px 24px rgba(0, 0, 0, 0.8), 0 0 12px rgba(16, 185, 129, 0.15)',
+  shadowHeavy: '0 16px 48px rgba(0, 0, 0, 0.9), 0 0 24px rgba(16, 185, 129, 0.25)',
 };
 
 export const SEVERITY_CONFIG = {
@@ -90,8 +90,8 @@ export const SEVERITY_CONFIG = {
     gradient: 'linear-gradient(135deg, #22c55e, #16a34a)', glow: '0 0 12px rgba(34, 197, 94, 0.3)', label: 'Low',
   },
   info: {
-    color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.4)',
-    gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)', glow: '0 0 12px rgba(59, 130, 246, 0.3)', label: 'Info',
+    color: '#00ff66', bg: 'rgba(0, 255, 102, 0.12)', border: 'rgba(0, 255, 102, 0.4)',
+    gradient: 'linear-gradient(135deg, #10b981, #059669)', glow: '0 0 12px rgba(0, 255, 102, 0.3)', label: 'Info',
   },
 };
 
@@ -150,7 +150,7 @@ export const modernButtonStyle = {
   fontSize: TYPOGRAPHY.fontSize.base,
   cursor: 'pointer',
   transition: `all ${ANIMATION_CONFIG.duration.normal}ms ${ANIMATION_CONFIG.easing.smooth}`,
-  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
+  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
 };
 
 export const modernInputStyle = {
@@ -223,22 +223,22 @@ export const truncateText = (text, maxLen = 50) => {
 
 // --- Chart Theme ---
 export const chartTheme = {
-  colors: ['#6366f1', '#8b5cf6', '#06b6d4', '#14b8a6', '#3b82f6', '#a855f7', '#ec4899', '#f59e0b'],
-  grid: { stroke: 'rgba(255, 255, 255, 0.04)', strokeDasharray: '3 3' },
-  axis: { stroke: 'rgba(255, 255, 255, 0.1)', fontSize: 11, fill: '#64748b' },
+  colors: ['#10b981', '#00ff66', '#34d399', '#059669', '#6ee7b7', '#a7f3d0', '#f59e0b', '#ef4444'],
+  grid: { stroke: 'rgba(16, 185, 129, 0.08)', strokeDasharray: '3 3' },
+  axis: { stroke: 'rgba(16, 185, 129, 0.2)', fontSize: 11, fill: '#86efac' },
   tooltip: {
     contentStyle: {
-      background: 'rgba(12, 17, 32, 0.95)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
+      background: 'rgba(2, 8, 4, 0.96)',
+      border: '1px solid rgba(16, 185, 129, 0.3)',
       borderRadius: '8px',
-      color: '#f1f5f9',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+      color: '#ecfdf5',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(16, 185, 129, 0.2)',
       backdropFilter: 'blur(20px)',
       fontSize: '12px',
       padding: '8px 12px',
     },
-    labelStyle: { color: '#94a3b8', fontWeight: 500, marginBottom: '4px' },
-    itemStyle: { color: '#f1f5f9', fontSize: '12px', padding: '2px 0' },
+    labelStyle: { color: '#a7f3d0', fontWeight: 500, marginBottom: '4px' },
+    itemStyle: { color: '#ecfdf5', fontSize: '12px', padding: '2px 0' },
   },
 };
 

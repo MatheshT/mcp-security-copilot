@@ -29,11 +29,11 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
       padding: collapsed ? '10px 0' : '10px 14px',
       marginBottom: 3,
       borderRadius: 8,
-      border: isActive ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
+      border: isActive ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid transparent',
       background: isActive
-        ? 'rgba(59, 130, 246, 0.15)'
+        ? 'rgba(16, 185, 129, 0.16)'
         : 'transparent',
-      color: isActive ? '#3b82f6' : 'var(--text-secondary, #94a3b8)',
+      color: isActive ? '#10b981' : 'var(--text-secondary, #a7f3d0)',
       cursor: 'pointer',
       fontSize: '0.8rem',
       fontWeight: isActive ? 700 : 500,
@@ -46,15 +46,15 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
     }}
     onMouseOver={e => {
       if (!isActive) {
-        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+        e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
         e.currentTarget.style.color = '#ffffff';
-        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+        e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.2)';
       }
     }}
     onMouseOut={e => {
       if (!isActive) {
         e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'var(--text-secondary, #94a3b8)';
+        e.currentTarget.style.color = 'var(--text-secondary, #a7f3d0)';
         e.currentTarget.style.borderColor = 'transparent';
       }
     }}
@@ -67,7 +67,7 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
         top: '20%',
         height: '60%',
         width: 3,
-        background: '#3b82f6',
+        background: '#10b981',
         borderRadius: '0 3px 3px 0'
       }} />
     )}
@@ -99,8 +99,8 @@ const NavItem = memo(({ item, isActive, onClick, collapsed }) => (
             fontWeight: 800,
             padding: '1px 5px',
             borderRadius: 4,
-            background: isActive ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-            color: isActive ? '#60a5fa' : 'rgba(255, 255, 255, 0.4)',
+            background: isActive ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+            color: isActive ? '#34d399' : 'rgba(255, 255, 255, 0.4)',
             fontFamily: 'JetBrains Mono, monospace'
           }}>
             {item.badge}
@@ -162,12 +162,12 @@ const Navigation = ({ currentView, setCurrentView, user, sidebarCollapsed, setSi
               width: 42,
               height: 42,
               borderRadius: 12,
-              background: 'var(--gradient-primary, linear-gradient(135deg, #00f5d4, #7928ca))',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 22,
-              boxShadow: '0 0 20px var(--primary-color, rgba(0, 245, 212, 0.4))',
+              boxShadow: '0 0 20px rgba(16, 185, 129, 0.45)',
               flexShrink: 0
             }}>
               🛡️
@@ -177,7 +177,7 @@ const Navigation = ({ currentView, setCurrentView, user, sidebarCollapsed, setSi
                 <div style={{
                   fontSize: '1rem',
                   fontWeight: 900,
-                  background: 'var(--gradient-primary, linear-gradient(135deg, #00f5d4, #7928ca))',
+                  background: 'linear-gradient(135deg, #00ff66, #10b981)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
@@ -188,7 +188,7 @@ const Navigation = ({ currentView, setCurrentView, user, sidebarCollapsed, setSi
                 </div>
                 <div style={{
                   fontSize: '0.58rem',
-                  color: 'var(--primary-color, #3b82f6)',
+                  color: '#10b981',
                   letterSpacing: '0.14em',
                   fontWeight: 800,
                   fontFamily: 'JetBrains Mono, monospace'

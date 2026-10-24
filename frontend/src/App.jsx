@@ -29,8 +29,8 @@ const PageLoader = () => (
       width: 44,
       height: 44,
       borderRadius: '50%',
-      border: '3px solid rgba(59, 130, 246, 0.2)',
-      borderTopColor: '#3b82f6',
+      border: '3px solid rgba(16, 185, 129, 0.2)',
+      borderTopColor: '#10b981',
       animation: 'spin-fast 0.65s linear infinite'
     }} />
     <div style={{
@@ -109,8 +109,8 @@ function App() {
     <div
       className={scanlinesActive ? 'cyber-scanlines-active' : ''}
       style={{
-        background: 'var(--bg-deepest, #0b0f19)',
-        color: 'var(--text-primary, #f8fafc)',
+        background: 'var(--bg-deepest, #000000)',
+        color: 'var(--text-primary, #ecfdf5)',
         minHeight: '100vh',
         display: 'flex',
         position: 'relative',
@@ -122,8 +122,8 @@ function App() {
         position: 'fixed',
         inset: 0,
         backgroundImage: `
-          linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px)
+          linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px)
         `,
         backgroundSize: '36px 36px',
         pointerEvents: 'none',

@@ -4,11 +4,11 @@ import { CYBER_THEMES, DEFCON_LEVELS, applyThemeToDom, getStoredTheme } from '..
 import { cyberAudio } from '../utils/cyberSound';
 
 const TICKER_ITEMS = [
-  { text: '🧠 ML UEBA: Isolation Forest flagged anomalous token issuance on DC-PRIMARY-01', tag: 'UEBA', color: '#3b82f6' },
-  { text: '🤖 AI COPILOT: 16 MCP Free SOC Intelligence Tools Online & Ready', tag: 'COPILOT', color: '#10b981' },
-  { text: '🚨 WAZUH SIEM: Live agent telemetry synchronized across all endpoints', tag: 'SIEM', color: '#0ea5e9' },
-  { text: '🌐 THREAT INTEL: AlienVault OTX & AbuseIPDB Feeds ingested successfully', tag: 'INTEL', color: '#6366f1' },
-  { text: '🐝 AI SWARM: Autonomous Multi-Agent Forensic Correlation Engine Active', tag: 'SWARM', color: '#8b5cf6' },
+  { text: '🧠 ML UEBA: Isolation Forest flagged anomalous token issuance on DC-PRIMARY-01', tag: 'UEBA', color: '#10b981' },
+  { text: '🤖 AI COPILOT: 16 MCP Free SOC Intelligence Tools Online & Ready', tag: 'COPILOT', color: '#00ff66' },
+  { text: '🚨 WAZUH SIEM: Live agent telemetry synchronized across all endpoints', tag: 'SIEM', color: '#34d399' },
+  { text: '🌐 THREAT INTEL: AlienVault OTX & AbuseIPDB Feeds ingested successfully', tag: 'INTEL', color: '#059669' },
+  { text: '🐝 AI SWARM: Autonomous Multi-Agent Forensic Correlation Engine Active', tag: 'SWARM', color: '#22c55e' },
 ];
 
 const MODULE_OPTIONS = [

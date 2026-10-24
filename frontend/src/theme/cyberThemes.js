@@ -6,28 +6,28 @@
 export const CYBER_THEMES = {
   slate: {
     id: 'slate',
-    name: 'Enterprise Slate',
-    subtitle: 'CrowdStrike Dark & Enterprise Blue',
+    name: 'Obsidian Emerald',
+    subtitle: 'Deep Black & Cyber Emerald',
     icon: '🛡️',
-    accent: '#3b82f6',
-    secondary: '#6366f1',
-    tertiary: '#0ea5e9',
-    bgDeep: '#0b0f19',
-    bgPrimary: '#0f172a',
-    bgSecondary: '#1e293b',
-    bgElevated: '#334155',
-    glass: 'rgba(15, 23, 42, 0.9)',
-    glassBorder: 'rgba(255, 255, 255, 0.08)',
-    glassBorderHover: 'rgba(59, 130, 246, 0.4)',
-    glow: 'none',
-    textPrimary: '#f8fafc',
-    textSecondary: '#94a3b8',
-    textMuted: '#64748b',
-    gradientPrimary: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-    gradientAccent: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-    gradientSurface: 'linear-gradient(180deg, #1e293b, #0f172a)',
-    badgeBg: 'rgba(59, 130, 246, 0.12)',
-    badgeColor: '#3b82f6',
+    accent: '#10b981',
+    secondary: '#059669',
+    tertiary: '#34d399',
+    bgDeep: '#000000',
+    bgPrimary: '#020502',
+    bgSecondary: '#051208',
+    bgElevated: '#0a2210',
+    glass: 'rgba(2, 8, 4, 0.92)',
+    glassBorder: 'rgba(16, 185, 129, 0.22)',
+    glassBorderHover: 'rgba(16, 185, 129, 0.55)',
+    glow: '0 0 20px rgba(16, 185, 129, 0.3)',
+    textPrimary: '#ecfdf5',
+    textSecondary: '#a7f3d0',
+    textMuted: '#6ee7b7',
+    gradientPrimary: 'linear-gradient(135deg, #10b981, #059669)',
+    gradientAccent: 'linear-gradient(135deg, #00ff66, #10b981)',
+    gradientSurface: 'linear-gradient(180deg, #051208, #020502)',
+    badgeBg: 'rgba(16, 185, 129, 0.16)',
+    badgeColor: '#10b981',
   },
   quantum: {
     id: 'quantum',
@@ -81,28 +81,28 @@ export const CYBER_THEMES = {
   },
   matrix: {
     id: 'matrix',
-    name: 'Terminal Matrix',
-    subtitle: 'Phosphor Green & Military Grid',
+    name: 'Terminal Matrix (Black & Green)',
+    subtitle: 'Pure Obsidian & Matrix Green',
     icon: '🟢',
-    accent: '#00ff66',
-    secondary: '#10b981',
-    tertiary: '#06d6a0',
-    bgDeep: '#010904',
-    bgPrimary: '#031208',
-    bgSecondary: '#072412',
-    bgElevated: '#0b3a1d',
-    glass: 'rgba(7, 36, 18, 0.82)',
-    glassBorder: 'rgba(0, 255, 102, 0.25)',
-    glassBorderHover: 'rgba(0, 255, 102, 0.6)',
-    glow: '0 0 24px rgba(0, 255, 102, 0.3)',
-    textPrimary: '#dcfce7',
-    textSecondary: '#86efac',
-    textMuted: '#16a34a',
-    gradientPrimary: 'linear-gradient(135deg, #00ff66, #059669)',
-    gradientAccent: 'linear-gradient(135deg, #00ff66, #10b981, #06d6a0)',
-    gradientSurface: 'linear-gradient(180deg, rgba(11, 58, 29, 0.8), rgba(3, 18, 8, 0.95))',
-    badgeBg: 'rgba(0, 255, 102, 0.12)',
-    badgeColor: '#00ff66',
+    accent: '#10b981',
+    secondary: '#00ff66',
+    tertiary: '#34d399',
+    bgDeep: '#000000',
+    bgPrimary: '#020603',
+    bgSecondary: '#051208',
+    bgElevated: '#0a2210',
+    glass: 'rgba(2, 10, 5, 0.92)',
+    glassBorder: 'rgba(16, 185, 129, 0.28)',
+    glassBorderHover: 'rgba(0, 255, 102, 0.65)',
+    glow: '0 0 24px rgba(16, 185, 129, 0.4)',
+    textPrimary: '#ecfdf5',
+    textSecondary: '#a7f3d0',
+    textMuted: '#34d399',
+    gradientPrimary: 'linear-gradient(135deg, #10b981, #059669)',
+    gradientAccent: 'linear-gradient(135deg, #00ff66, #10b981, #047857)',
+    gradientSurface: 'linear-gradient(180deg, rgba(8, 26, 13, 0.9), rgba(2, 6, 3, 0.98))',
+    badgeBg: 'rgba(16, 185, 129, 0.16)',
+    badgeColor: '#10b981',
   },
   synthwave: {
     id: 'synthwave',
@@ -165,7 +165,7 @@ export const DEFCON_LEVELS = [
 ];
 
 export const applyThemeToDom = (themeId) => {
-  const theme = CYBER_THEMES[themeId] || CYBER_THEMES.slate;
+  const theme = CYBER_THEMES[themeId] || CYBER_THEMES.matrix;
   const root = document.documentElement;
 
   root.style.setProperty('--primary-color', theme.accent);
@@ -196,10 +196,10 @@ export const applyThemeToDom = (themeId) => {
 };
 
 export const getStoredTheme = () => {
-  if (typeof window === 'undefined') return 'slate';
+  if (typeof window === 'undefined') return 'matrix';
   const stored = localStorage.getItem('sentinel_cyber_theme');
-  if (!stored || stored === 'quantum') {
-    return 'slate';
+  if (!stored || stored === 'slate' || stored === 'quantum') {
+    return 'matrix';
   }
   return stored;
 };

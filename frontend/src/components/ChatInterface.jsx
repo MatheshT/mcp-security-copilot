@@ -23,7 +23,7 @@ const inlineMarkdown = (text) => {
           borderRadius: 4,
           fontFamily: 'JetBrains Mono, Fira Code, monospace',
           fontSize: '0.82em',
-          border: '1px solid rgba(99,102,241,0.3)'
+          border: '1px solid rgba(16, 185, 129, 0.3)'
         }}>
           {part.slice(1, -1)}
         </code>
@@ -66,7 +66,7 @@ const renderMarkdown = (text) => {
           boxSizing: 'border-box',
           fontFamily: 'JetBrains Mono, Fira Code, monospace',
           fontSize: '0.78rem',
-          color: '#38bdf8',
+          color: '#34d399',
           margin: '10px 0',
           lineHeight: 1.6,
           boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.6)'
@@ -452,7 +452,7 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
                 marginTop: 8,
                 padding: '8px 12px',
                 background: 'rgba(0,0,0,0.5)',
-                border: '1px solid rgba(99,102,241,0.3)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
                 borderRadius: 8,
                 fontSize: '0.68rem',
                 fontFamily: 'JetBrains Mono, monospace',
@@ -621,8 +621,8 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
               <button
                 onClick={() => onActionClick('Run ML IsolationForest and RandomForest UEBA anomaly detection on this event')}
                 style={{
-                  background: 'rgba(59, 130, 246, 0.15)',
-                  border: '1px solid rgba(59, 130, 246, 0.35)',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
                   color: '#93c5fd',
                   borderRadius: 8,
                   padding: '4px 10px',
@@ -642,7 +642,7 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
                 style={{
                   background: 'rgba(6, 182, 212, 0.15)',
                   border: '1px solid rgba(6, 182, 212, 0.35)',
-                  color: '#38bdf8',
+                  color: '#34d399',
                   borderRadius: 8,
                   padding: '4px 10px',
                   fontSize: '0.7rem',
@@ -718,7 +718,7 @@ const MessageBubble = React.memo(({ message, isLatestAI, onActionClick }) => {
           width: 40,
           height: 40,
           borderRadius: 12,
-          background: 'linear-gradient(135deg, #1e293b, #334155)',
+          background: 'linear-gradient(135deg, #059669, #022c15)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -973,7 +973,7 @@ const ChatInterface = () => {
       height: '100%',
       width: '100%',
       maxHeight: '100%',
-      background: 'var(--bg-deepest, #0b0f19)',
+      background: 'var(--bg-deepest, #000000)',
       position: 'relative',
       overflow: 'hidden',
       fontFamily: TYPOGRAPHY.fontFamily
@@ -982,7 +982,7 @@ const ChatInterface = () => {
       <div style={{
         position: 'absolute',
         inset: 0,
-        backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(16,185,129,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.03) 1px, transparent 1px)',
         backgroundSize: '36px 36px',
         pointerEvents: 'none',
         zIndex: 0
@@ -993,8 +993,8 @@ const ChatInterface = () => {
         padding: '12px 20px',
         position: 'relative',
         zIndex: 2,
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        background: 'rgba(15, 23, 42, 0.96)',
+        borderBottom: '1px solid rgba(16, 185, 129, 0.18)',
+        background: 'rgba(2, 8, 4, 0.96)',
         backdropFilter: 'blur(20px)',
         flexShrink: 0
       }}>
@@ -1005,12 +1005,12 @@ const ChatInterface = () => {
               width: 40,
               height: 40,
               borderRadius: 10,
-              background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 20,
-              boxShadow: '0 4px 16px rgba(59, 130, 246, 0.35)',
+              boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
               flexShrink: 0
             }}>
               🤖
@@ -1041,9 +1041,9 @@ const ChatInterface = () => {
                   16 MCP TOOLS ONLINE
                 </span>
                 <span style={{
-                  background: 'rgba(56,189,248,0.16)',
-                  border: '1px solid rgba(56,189,248,0.4)',
-                  color: '#38bdf8',
+                  background: 'rgba(16,185,129,0.16)',
+                  border: '1px solid rgba(16,185,129,0.4)',
+                  color: '#34d399',
                   padding: '2px 8px',
                   borderRadius: 12,
                   fontSize: '0.62rem',
@@ -1065,10 +1065,10 @@ const ChatInterface = () => {
               onClick={() => { cyberAudio.playClick(); setShowToolsModal(true); }}
               title="Inspect all 16 connected MCP tools & capabilities"
               style={{
-                background: 'rgba(59, 130, 246, 0.15)',
-                border: '1px solid rgba(59, 130, 246, 0.4)',
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
                 borderRadius: 8,
-                color: '#60a5fa',
+                color: '#34d399',
                 padding: '7px 12px',
                 cursor: 'pointer',
                 fontSize: '0.72rem',
@@ -1086,8 +1086,8 @@ const ChatInterface = () => {
               <button
                 onClick={() => { cyberAudio.playClick(); setShowModelMenu(p => !p); }}
                 style={{
-                  background: 'rgba(15,23,42,0.8)',
-                  border: '1px solid rgba(99,102,241,0.3)',
+                  background: 'rgba(2, 8, 4, 0.88)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
                   borderRadius: 10,
                   color: '#f8fafc',
                   padding: '7px 12px',
@@ -1106,8 +1106,8 @@ const ChatInterface = () => {
                   position: 'absolute',
                   top: '110%',
                   right: 0,
-                  background: 'rgba(10,15,30,0.98)',
-                  border: '1px solid rgba(99,102,241,0.4)',
+                  background: 'rgba(2, 6, 3, 0.98)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
                   borderRadius: 12,
                   padding: 6,
                   zIndex: 100,
@@ -1186,7 +1186,7 @@ const ChatInterface = () => {
               onClick={handleExport}
               title="Export Incident Report to Markdown"
               style={{
-                background: 'rgba(15,23,42,0.8)',
+                background: 'rgba(2, 8, 4, 0.88)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 10,
                 color: '#f8fafc',
@@ -1203,7 +1203,7 @@ const ChatInterface = () => {
               onClick={handleClear}
               title="Clear session messages"
               style={{
-                background: 'rgba(15,23,42,0.8)',
+                background: 'rgba(2, 8, 4, 0.88)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 borderRadius: 10,
                 color: '#f8fafc',
@@ -1227,7 +1227,7 @@ const ChatInterface = () => {
               style={{
                 width: '100%',
                 background: 'rgba(10,15,30,0.95)',
-                border: '1px solid rgba(99,102,241,0.4)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
                 borderRadius: 8,
                 color: '#f8fafc',
                 padding: '8px 12px',
@@ -1245,8 +1245,8 @@ const ChatInterface = () => {
         padding: '6px 20px',
         display: 'flex',
         gap: 6,
-        background: 'rgba(15, 23, 42, 0.95)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        background: 'rgba(2, 6, 3, 0.96)',
+        borderBottom: '1px solid rgba(16, 185, 129, 0.15)',
         overflowX: 'auto',
         scrollbarWidth: 'thin',
         flexShrink: 0
@@ -1256,10 +1256,10 @@ const ChatInterface = () => {
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
             style={{
-              background: activeCategory === cat.id ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255,255,255,0.03)',
-              border: activeCategory === cat.id ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)',
+              background: activeCategory === cat.id ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.03)',
+              border: activeCategory === cat.id ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.08)',
               borderRadius: 6,
-              color: activeCategory === cat.id ? '#60a5fa' : '#94a3b8',
+              color: activeCategory === cat.id ? '#34d399' : '#a7f3d0',
               padding: '4px 10px',
               fontSize: '0.66rem',
               fontWeight: 700,
@@ -1283,8 +1283,8 @@ const ChatInterface = () => {
         overflowX: 'auto',
         flexShrink: 0,
         scrollbarWidth: 'thin',
-        background: 'rgba(11, 15, 25, 0.92)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)'
+        background: 'rgba(0, 0, 0, 0.95)',
+        borderBottom: '1px solid rgba(16, 185, 129, 0.15)'
       }}>
         {filteredCommands.map((cmd, idx) => (
           <button
@@ -1308,8 +1308,8 @@ const ChatInterface = () => {
               whiteSpace: 'nowrap'
             }}
             onMouseOver={e => {
-              e.currentTarget.style.borderColor = '#3b82f6';
-              e.currentTarget.style.color = '#60a5fa';
+              e.currentTarget.style.borderColor = '#10b981';
+              e.currentTarget.style.color = '#34d399';
             }}
             onMouseOut={e => {
               e.currentTarget.style.borderColor = cmd.tag === 'Tamil' ? 'rgba(234, 179, 8, 0.35)' : 'rgba(255, 255, 255, 0.1)';
@@ -1356,8 +1356,8 @@ const ChatInterface = () => {
         padding: '10px 20px 12px',
         position: 'relative',
         zIndex: 10,
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        background: 'rgba(15, 23, 42, 0.98)',
+        borderTop: '1px solid rgba(16, 185, 129, 0.2)',
+        background: 'rgba(2, 6, 3, 0.98)',
         backdropFilter: 'blur(20px)',
         flexShrink: 0
       }}>
@@ -1377,8 +1377,8 @@ const ChatInterface = () => {
               rows={1}
               style={{
                 width: '100%',
-                background: 'rgba(10, 15, 30, 0.95)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
+                background: 'rgba(1, 4, 2, 0.96)',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
                 borderRadius: 10,
                 color: '#f8fafc',
                 padding: '12px 16px',
@@ -1394,8 +1394,8 @@ const ChatInterface = () => {
                 boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)',
                 boxSizing: 'border-box'
               }}
-              onFocus={e => e.target.style.borderColor = '#3b82f6'}
-              onBlur={e => e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+              onFocus={e => e.target.style.borderColor = '#10b981'}
+              onBlur={e => e.target.style.borderColor = 'rgba(16, 185, 129, 0.25)'}
             />
             {charCount > 0 && (
               <div style={{
@@ -1417,8 +1417,8 @@ const ChatInterface = () => {
             disabled={loading}
             style={{
               background: loading
-                ? 'rgba(59, 130, 246, 0.25)'
-                : 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                ? 'rgba(16, 185, 129, 0.25)'
+                : 'linear-gradient(135deg, #10b981, #059669)',
               border: 'none',
               borderRadius: 10,
               color: '#ffffff',
@@ -1432,7 +1432,7 @@ const ChatInterface = () => {
               gap: 8,
               transition: 'all 200ms ease',
               whiteSpace: 'nowrap',
-              boxShadow: loading ? 'none' : '0 4px 16px rgba(59, 130, 246, 0.35)',
+              boxShadow: loading ? 'none' : '0 4px 16px rgba(16, 185, 129, 0.4)',
               flexShrink: 0
             }}
           >
@@ -1470,7 +1470,7 @@ const ChatInterface = () => {
         >
           <div
             style={{
-              background: 'rgba(15, 23, 42, 0.98)',
+              background: 'rgba(2, 6, 3, 0.98)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
               borderRadius: 16,
               maxWidth: 860,
@@ -1478,7 +1478,7 @@ const ChatInterface = () => {
               maxHeight: '85vh',
               overflowY: 'auto',
               padding: 24,
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(59, 130, 246, 0.15)',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(16, 185, 129, 0.25)',
               position: 'relative'
             }}
             onClick={e => e.stopPropagation()}
@@ -1554,7 +1554,7 @@ const ChatInterface = () => {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#38bdf8',
+                        color: '#34d399',
                         cursor: 'pointer',
                         fontWeight: 600
                       }}
