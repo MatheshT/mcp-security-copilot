@@ -16,8 +16,22 @@ const SEVERITY_CONFIG = {
 };
 
 const Alerts = () => {
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [alerts, setAlerts] = useState(() => {
+    try {
+      const cached = localStorage.getItem('sentinel_alerts_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('sentinel_alerts_cache');
+      return !cached || JSON.parse(cached).length === 0;
+    } catch {
+      return true;
+    }
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedAlert, setSelectedAlert] = useState(null);
@@ -32,24 +46,28 @@ const Alerts = () => {
   const loadAlerts = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
-      else setLoading(true);
       setError(null);
 
       const data = await getWazuhAlerts({ limit: 200 });
 
-      if (data && Array.isArray(data.alerts)) {
+      if (data && Array.isArray(data.alerts) && data.alerts.length > 0) {
         setAlerts(data.alerts);
-      } else {
+        try {
+          localStorage.setItem('sentinel_alerts_cache', JSON.stringify(data.alerts));
+        } catch {}
+      } else if (!alerts.length) {
         setAlerts([]);
       }
     } catch (err) {
       console.error('Error fetching Wazuh alerts:', err);
-      setError(err.message || 'Failed to communicate with Wazuh node');
+      if (!alerts.length) {
+        setError(err.message || 'Connecting to Wazuh SIEM node...');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [alerts.length]);
 
   useEffect(() => {
     loadAlerts();

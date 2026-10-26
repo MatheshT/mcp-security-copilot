@@ -8,6 +8,7 @@ import requests
 import urllib3
 from dotenv import load_dotenv
 from datetime import datetime
+import time
 
 load_dotenv()
 
@@ -24,13 +25,38 @@ VBOX_MANAGE_PATH = r"C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
 DEFAULT_WAZUH_VM = "Wazuh v4.14.7 OVA"
 
 
-# In-memory cache for fast UI updates
-_alerts_cache = {"timestamp": 0.0, "alerts": []}
-CACHE_TTL_SECONDS = 30.0
+def _get_cached_alerts_from_disk(limit: int = 500) -> List[Dict]:
+    """Load persistent real alerts from local cache file."""
+    cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "wazuh_alerts_cache.json")
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and data:
+                    return data[:limit]
+        except Exception:
+            pass
+    return []
+
+# Pre-populate in-memory cache immediately from disk on startup
+_initial_disk_alerts = _get_cached_alerts_from_disk(limit=500)
+_alerts_cache = {"timestamp": time.time() if _initial_disk_alerts else 0.0, "alerts": _initial_disk_alerts or []}
+CACHE_TTL_SECONDS = 15.0
 
 
-def _vbox_run_cmd_in_vm(vm_name: str, cmd: str, args: List[str]) -> str:
-    """Run a command inside the VM via VBoxManage guestcontrol and return stdout."""
+def _is_vm_running(vm_name: str = DEFAULT_WAZUH_VM) -> bool:
+    """Fast non-blocking check (0.1s) if VirtualBox VM is actually running."""
+    if not os.path.exists(VBOX_MANAGE_PATH):
+        return False
+    try:
+        res = subprocess.run([VBOX_MANAGE_PATH, "list", "runningvms"], capture_output=True, text=True, timeout=2)
+        return vm_name in res.stdout
+    except Exception:
+        return False
+
+
+def _vbox_run_cmd_in_vm(vm_name: str, cmd: str, args: List[str], timeout: int = 4) -> str:
+    """Run a command inside the VM via VBoxManage guestcontrol with fast timeout."""
     if not os.path.exists(VBOX_MANAGE_PATH):
         raise RuntimeError("VBoxManage not found")
     result = subprocess.run(
@@ -39,12 +65,19 @@ def _vbox_run_cmd_in_vm(vm_name: str, cmd: str, args: List[str]) -> str:
          "--username", "root",
          "--password", "wazuh",
          "--"] + args,
-        capture_output=True, text=True, timeout=15
+        capture_output=True, text=True, timeout=timeout
     )
     return result.stdout or ""
 
 
-def _vbox_read_file(vm_name: str, remote_path: str, lines: int = 500) -> str:
+def _vbox_read_file(vm_name: str, remote_path: str, lines: int = 300) -> str:
+    """Read last N lines of a file inside the VM."""
+    try:
+        out = _vbox_run_cmd_in_vm(vm_name, "/usr/bin/tail", ["-n", str(lines), remote_path], timeout=4)
+        return out
+    except Exception as e:
+        print(f"Error reading {remote_path} from VM: {e}")
+        return ""
     """Read last N lines of a file inside the VM."""
     try:
         out = _vbox_run_cmd_in_vm(vm_name, "/usr/bin/tail", ["-n", str(lines), remote_path])
@@ -153,33 +186,26 @@ def _parse_alert_block(block: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def _get_cached_alerts_from_disk(limit: int = 100) -> List[Dict]:
-    cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "wazuh_alerts_cache.json")
-    if os.path.exists(cache_path):
-        try:
-            with open(cache_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list) and data:
-                    return data[:limit]
-        except Exception:
-            pass
-    return []
-
-
 def _get_alerts_from_log(vm_name: str = DEFAULT_WAZUH_VM, limit: int = 200) -> List[Dict]:
-    """Read and parse real alerts from /var/ossec/logs/alerts/alerts.json (and .log) via guestcontrol with in-memory & disk caching."""
-    import time
+    """Read real alerts from cache instantly, or refresh from VM if running."""
     global _alerts_cache
     now = time.time()
 
+    # Fast path: return cache if valid and not expired
     if _alerts_cache["alerts"] and (now - _alerts_cache["timestamp"] < CACHE_TTL_SECONDS):
+        return _alerts_cache["alerts"][:limit]
+
+    # If VM is not running, do NOT block - instantly return current cache or disk cache
+    if not _is_vm_running(vm_name):
+        if not _alerts_cache["alerts"]:
+            _alerts_cache = {"timestamp": now, "alerts": _get_cached_alerts_from_disk(limit=500)}
         return _alerts_cache["alerts"][:limit]
 
     alerts = []
 
     # 1. Try reading fast structured alerts.json
     try:
-        raw_json = _vbox_read_file(vm_name, "/var/ossec/logs/alerts/alerts.json", lines=min(limit * 2, 400))
+        raw_json = _vbox_read_file(vm_name, "/var/ossec/logs/alerts/alerts.json", lines=min(limit * 2, 350))
         if raw_json:
             for line in raw_json.strip().splitlines():
                 line = line.strip()
@@ -220,7 +246,7 @@ def _get_alerts_from_log(vm_name: str = DEFAULT_WAZUH_VM, limit: int = 200) -> L
     # 2. Fallback to alerts.log if alerts.json was empty
     if not alerts:
         try:
-            raw_log = _vbox_read_file(vm_name, "/var/ossec/logs/alerts/alerts.log", lines=min(limit * 3, 600))
+            raw_log = _vbox_read_file(vm_name, "/var/ossec/logs/alerts/alerts.log", lines=min(limit * 3, 400))
             if raw_log:
                 blocks = re.split(r'\n(?=\*\* Alert )', raw_log)
                 for block in blocks:
@@ -242,7 +268,7 @@ def _get_alerts_from_log(vm_name: str = DEFAULT_WAZUH_VM, limit: int = 200) -> L
             pass
         return alerts[:limit]
 
-    # 3. Fallback to disk cache if VM was offline / timed out
+    # 3. Fallback to disk cache if read failed
     disk_alerts = _get_cached_alerts_from_disk(limit)
     if disk_alerts:
         _alerts_cache = {"timestamp": now, "alerts": disk_alerts}

@@ -51,6 +51,21 @@ for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":5173 "') do (
     )
 )
 
+:: 3.5. Ensure Wazuh SIEM VirtualBox VM is Running in Background
+set "VBOX_MANAGE=C:\Program Files\Oracle\VirtualBox\VBoxManage.exe"
+set "WAZUH_VM_NAME=Wazuh v4.14.7 OVA"
+if exist "%VBOX_MANAGE%" (
+    echo [*] Checking Wazuh SIEM VirtualBox VM status...
+    "%VBOX_MANAGE%" list runningvms | findstr /C:"%WAZUH_VM_NAME%" >nul 2>&1
+    if errorlevel 1 (
+        echo [*] Starting "%WAZUH_VM_NAME%" silently in headless mode...
+        "%VBOX_MANAGE%" startvm "%WAZUH_VM_NAME%" --type headless >nul 2>&1
+        echo [OK] Wazuh SIEM VM started in background.
+    ) else (
+        echo [OK] Wazuh SIEM VM is active and running.
+    )
+)
+
 :: 4. Start Backend Server
 echo.
 echo ===============================================================================
