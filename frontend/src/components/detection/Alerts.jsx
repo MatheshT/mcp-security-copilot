@@ -225,7 +225,7 @@ const Alerts = () => {
                 gap: 8,
                 transition: 'all 150ms ease'
               }}
-              onMouseOver={e => e.currentTarget.style.borderColor = 'rgba(99,102,241,0.5)'}
+              onMouseOver={e => e.currentTarget.style.borderColor = 'rgba(16,185,129,0.5)'}
               onMouseOut={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
             >
               <span style={{ display: 'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
@@ -242,7 +242,7 @@ const Alerts = () => {
         gap: 16
       }}>
         {[
-          { label: 'Total Events', count: stats.total, color: '#6366f1', icon: '📊', bg: 'rgba(99,102,241,0.1)' },
+          { label: 'Total Events', count: stats.total, color: '#10b981', icon: '📊', bg: 'rgba(16,185,129,0.1)' },
           { label: 'Critical Severity', count: stats.critical, color: '#ef4444', icon: '🔴', bg: 'rgba(239,68,68,0.1)' },
           { label: 'High Severity', count: stats.high, color: '#f97316', icon: '🟠', bg: 'rgba(249,115,22,0.1)' },
           { label: 'Medium Severity', count: stats.medium, color: '#eab308', icon: '🟡', bg: 'rgba(234,179,8,0.1)' },
@@ -294,8 +294,8 @@ const Alerts = () => {
                 key={sev}
                 onClick={() => setFilterSeverity(sev)}
                 style={{
-                  background: isActive ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(30,41,59,0.5)',
-                  border: `1px solid ${isActive ? '#818cf8' : 'rgba(255,255,255,0.08)'}`,
+                  background: isActive ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(30,41,59,0.5)',
+                  border: `1px solid ${isActive ? '#34d399' : 'rgba(16,185,129,0.2)'}`,
                   color: isActive ? '#fff' : '#94a3b8',
                   padding: '6px 14px',
                   borderRadius: BORDER_RADIUS.md,
@@ -332,7 +332,7 @@ const Alerts = () => {
                 outline: 'none',
                 fontFamily: TYPOGRAPHY.fontFamily
               }}
-              onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.5)'}
+              onFocus={e => e.target.style.borderColor = 'rgba(16,185,129,0.5)'}
               onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
             />
           </div>
@@ -374,8 +374,8 @@ const Alerts = () => {
               width: 40,
               height: 40,
               borderRadius: '50%',
-              border: '3px solid rgba(99,102,241,0.2)',
-              borderTopColor: '#6366f1',
+              border: '3px solid rgba(16,185,129,0.2)',
+              borderTopColor: '#10b981',
               animation: 'spin 0.8s linear infinite',
               margin: '0 auto 16px'
             }} />
@@ -460,7 +460,7 @@ const Alerts = () => {
                                 fontSize: '0.62rem',
                                 padding: '1px 6px',
                                 borderRadius: 4,
-                                border: '1px solid rgba(99,102,241,0.2)'
+                                border: '1px solid rgba(16,185,129,0.2)'
                               }}>
                                 {g}
                               </span>
@@ -690,7 +690,7 @@ const Alerts = () => {
               <button
                 onClick={() => setSelectedAlert(null)}
                 style={{
-                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
                   border: 'none',
                   color: '#fff',
                   padding: '8px 20px',

@@ -35,43 +35,38 @@ class WazuhConfig(BaseModel):
 
 
 @router.get("/wazuh/alerts")
-async def get_wazuh_alerts(time_range: str = "24h"):
-    """Get Wazuh alerts with optional time range filter"""
+async def get_wazuh_alerts(time_range: str = "24h", limit: int = 200, severity: str = "all"):
+    """Get real Wazuh alerts with optional severity and time range filter"""
     try:
-        result = wazuh_server.get_alerts()
-        if result.status == "success":
-            alerts = result.data.get("alerts", [])
-            return {
-                "status": "success",
-                "source": "wazuh",
-                "message": "No live Wazuh alerts were available" if not alerts else "Real Wazuh alerts",
-                "alerts": alerts,
-                "total_alerts": len(alerts),
-                "time_range": time_range
-            }
+        from .wazuh import _get_alerts_from_log, filter_alerts_by_severity
+        alerts = _get_alerts_from_log(limit=limit)
+        if severity != "all":
+            alerts = filter_alerts_by_severity(alerts, severity)
 
-        logger.warning("Wazuh returned a non-success result: %s", result.details)
+        if not alerts:
+            result = wazuh_server.get_alerts()
+            if result.status == "success":
+                alerts = result.data.get("alerts", [])
+
         return {
             "status": "success",
             "source": "wazuh",
-            "message": "Wazuh is unavailable; returning no live alerts",
-            "alerts": [],
-            "total_alerts": 0,
-            "time_range": time_range,
-            "details": result.details,
+            "message": f"Real Wazuh alerts ({len(alerts)} events)",
+            "alerts": alerts,
+            "total_alerts": len(alerts),
+            "time_range": time_range
         }
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error fetching Wazuh alerts: {e}")
+        from .wazuh import _get_cached_alerts_from_disk
+        cached = _get_cached_alerts_from_disk(limit)
         return {
             "status": "success",
-            "source": "wazuh",
-            "message": "Wazuh is unavailable; returning no live alerts",
-            "alerts": [],
-            "total_alerts": 0,
-            "time_range": time_range,
-            "details": str(e),
+            "source": "wazuh_cache",
+            "message": f"Cached Wazuh alerts ({len(cached)} events)",
+            "alerts": cached,
+            "total_alerts": len(cached),
+            "time_range": time_range
         }
 
 

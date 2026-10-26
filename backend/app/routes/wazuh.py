@@ -39,7 +39,7 @@ def _vbox_run_cmd_in_vm(vm_name: str, cmd: str, args: List[str]) -> str:
          "--username", "root",
          "--password", "wazuh",
          "--"] + args,
-        capture_output=True, text=True, timeout=5
+        capture_output=True, text=True, timeout=15
     )
     return result.stdout or ""
 
@@ -153,8 +153,21 @@ def _parse_alert_block(block: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def _get_alerts_from_log(vm_name: str = DEFAULT_WAZUH_VM, limit: int = 100) -> List[Dict]:
-    """Read and parse real alerts from /var/ossec/logs/alerts/alerts.log via guestcontrol with in-memory caching."""
+def _get_cached_alerts_from_disk(limit: int = 100) -> List[Dict]:
+    cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "wazuh_alerts_cache.json")
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and data:
+                    return data[:limit]
+        except Exception:
+            pass
+    return []
+
+
+def _get_alerts_from_log(vm_name: str = DEFAULT_WAZUH_VM, limit: int = 200) -> List[Dict]:
+    """Read and parse real alerts from /var/ossec/logs/alerts/alerts.json (and .log) via guestcontrol with in-memory & disk caching."""
     import time
     global _alerts_cache
     now = time.time()
@@ -162,20 +175,81 @@ def _get_alerts_from_log(vm_name: str = DEFAULT_WAZUH_VM, limit: int = 100) -> L
     if _alerts_cache["alerts"] and (now - _alerts_cache["timestamp"] < CACHE_TTL_SECONDS):
         return _alerts_cache["alerts"][:limit]
 
-    raw = _vbox_read_file(vm_name, "/var/ossec/logs/alerts/alerts.log", lines=1000)
-    if not raw:
-        return _alerts_cache["alerts"][:limit]
-
-    blocks = re.split(r'\n(?=\*\* Alert )', raw)
     alerts = []
-    for block in blocks:
-        parsed = _parse_alert_block(block)
-        if parsed:
-            alerts.append(parsed)
 
-    alerts.reverse()
-    _alerts_cache = {"timestamp": now, "alerts": alerts}
-    return alerts[:limit]
+    # 1. Try reading fast structured alerts.json
+    try:
+        raw_json = _vbox_read_file(vm_name, "/var/ossec/logs/alerts/alerts.json", lines=min(limit * 2, 400))
+        if raw_json:
+            for line in raw_json.strip().splitlines():
+                line = line.strip()
+                if not line or not line.startswith('{'):
+                    continue
+                try:
+                    data = json.loads(line)
+                    rule = data.get('rule', {})
+                    level = int(rule.get('level', 0))
+                    sev = 'Critical' if level >= 12 else ('High' if level >= 8 else ('Medium' if level >= 4 else 'Low'))
+                    agent_data = data.get('agent', {})
+                    parsed = {
+                        'id': str(data.get('id', str(len(alerts) + 1))),
+                        'timestamp': data.get('timestamp') or datetime.now().isoformat(),
+                        'rule': {
+                            'id': str(rule.get('id', 'unknown')),
+                            'level': level,
+                            'description': rule.get('description', 'Wazuh Security Event'),
+                            'groups': rule.get('groups', []),
+                            'name': rule.get('description', 'Security Rule')
+                        },
+                        'agent': {
+                            'id': str(agent_data.get('id', '000')),
+                            'name': str(agent_data.get('name', 'wazuh-manager')),
+                            'ip': str(agent_data.get('ip', ''))
+                        },
+                        'location': str(data.get('location', 'N/A')),
+                        'severity': sev,
+                        'level': level,
+                        'full_log': str(data.get('full_log') or data.get('data', {}).get('win', {}).get('system', {}).get('message', ''))
+                    }
+                    alerts.append(parsed)
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"Error reading alerts.json from VM: {e}")
+
+    # 2. Fallback to alerts.log if alerts.json was empty
+    if not alerts:
+        try:
+            raw_log = _vbox_read_file(vm_name, "/var/ossec/logs/alerts/alerts.log", lines=min(limit * 3, 600))
+            if raw_log:
+                blocks = re.split(r'\n(?=\*\* Alert )', raw_log)
+                for block in blocks:
+                    parsed = _parse_alert_block(block)
+                    if parsed:
+                        alerts.append(parsed)
+        except Exception as e:
+            print(f"Error reading alerts.log from VM: {e}")
+
+    if alerts:
+        alerts.reverse()
+        _alerts_cache = {"timestamp": now, "alerts": alerts}
+        try:
+            cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "wazuh_alerts_cache.json")
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(alerts, f)
+        except Exception:
+            pass
+        return alerts[:limit]
+
+    # 3. Fallback to disk cache if VM was offline / timed out
+    disk_alerts = _get_cached_alerts_from_disk(limit)
+    if disk_alerts:
+        _alerts_cache = {"timestamp": now, "alerts": disk_alerts}
+        return disk_alerts
+
+    return _alerts_cache["alerts"][:limit] if _alerts_cache["alerts"] else []
+
 
 
 # =====================================================================
