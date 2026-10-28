@@ -1,0 +1,3 @@
+# SentinelAI X - Project Dependencies
+# Points to backend requirements including FastAPI, Uvicorn, scikit-learn, pandas, numpy, and MCP tools
+-r backend/requirements.txt

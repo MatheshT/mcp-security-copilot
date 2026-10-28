@@ -26,6 +26,23 @@ if not exist "%PYTHON_EXE%" (
 )
 echo [OK] Python Engine : %PYTHON_EXE%
 
+:: 1.5. Ensure Python Dependencies are Installed
+echo [*] Verifying Python dependencies...
+"%PYTHON_EXE%" -c "import fastapi, uvicorn, numpy, sklearn, pandas" >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [!] Missing required dependencies. Installing from backend\requirements.txt...
+    "%PYTHON_EXE%" -m pip install -r "%~dp0backend\requirements.txt"
+    if %errorlevel% neq 0 (
+        color 0C
+        echo [ERROR] Failed to install backend dependencies.
+        pause
+        exit /b 1
+    )
+    echo [OK] Backend dependencies installed successfully.
+) else (
+    echo [OK] Python Dependencies: All verified
+)
+
 :: 2. Check Node.js
 where node >nul 2>nul
 if %errorlevel% neq 0 (
