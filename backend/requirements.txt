@@ -25,8 +25,8 @@ pytest>=7.4.0
 pytest-asyncio>=0.21.0
 pytest-cov>=4.1.0
 # Windows log collection
-pywin32>=306
-wmi>=1.5.1
+pywin32>=306; sys_platform == 'win32'
+wmi>=1.5.1; sys_platform == 'win32'
 # Additional utilities
 ipaddress>=1.0.23
 urllib3>=2.0.0
