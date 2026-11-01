@@ -12,6 +12,7 @@ const ReportsDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const tabs = [
     { id: 'investigation', label: 'Investigation Reports', icon: '📄' },
@@ -40,13 +41,29 @@ const ReportsDashboard = () => {
   }, []);
 
   const handleDownloadPDF = async (alertId) => {
+    const targetId = alertId || '1';
     try {
       setGenerating(true);
-      window.open(`/api/report/${alertId}/pdf`, '_blank');
+      setDownloadingId(targetId);
+      const res = await fetch(`/api/report/${encodeURIComponent(targetId)}/pdf`);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch PDF (status ${res.status})`);
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SOC_Forensic_Report_${targetId}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (err) {
-      console.error('PDF error:', err);
+      console.warn('Direct blob download fallback to window.open:', err);
+      window.open(`/api/report/${encodeURIComponent(targetId)}/pdf`, '_blank');
     } finally {
       setGenerating(false);
+      setDownloadingId(null);
     }
   };
 
@@ -244,20 +261,21 @@ const ReportsDashboard = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDownloadPDF(rep.alert_id);
+                                handleDownloadPDF(rep.alert_id || rep.id);
                               }}
+                              disabled={downloadingId === (rep.alert_id || rep.id)}
                               style={{
-                                background: 'rgba(6,182,212,0.15)',
+                                background: downloadingId === (rep.alert_id || rep.id) ? 'rgba(6,182,212,0.3)' : 'rgba(6,182,212,0.15)',
                                 border: '1px solid rgba(6,182,212,0.3)',
                                 color: '#67e8f9',
                                 padding: '4px 10px',
                                 borderRadius: BORDER_RADIUS.sm,
                                 fontSize: '0.7rem',
                                 fontWeight: 600,
-                                cursor: 'pointer'
+                                cursor: downloadingId === (rep.alert_id || rep.id) ? 'wait' : 'pointer'
                               }}
                             >
-                              📑 Export PDF
+                              {downloadingId === (rep.alert_id || rep.id) ? '⏳ Exporting...' : '📑 Export PDF'}
                             </button>
                           </td>
                         </tr>
@@ -290,7 +308,8 @@ const ReportsDashboard = () => {
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button
-                    onClick={() => handleDownloadPDF(selectedReport.alert_id)}
+                    onClick={() => handleDownloadPDF(selectedReport.alert_id || selectedReport.id)}
+                    disabled={downloadingId === (selectedReport.alert_id || selectedReport.id)}
                     style={{
                       background: 'linear-gradient(135deg, #0284c7, #0369a1)',
                       border: 'none',
@@ -299,10 +318,11 @@ const ReportsDashboard = () => {
                       borderRadius: BORDER_RADIUS.md,
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: downloadingId === (selectedReport.alert_id || selectedReport.id) ? 'wait' : 'pointer',
+                      opacity: downloadingId === (selectedReport.alert_id || selectedReport.id) ? 0.7 : 1
                     }}
                   >
-                    Download Official PDF Document
+                    {downloadingId === (selectedReport.alert_id || selectedReport.id) ? '⏳ Preparing PDF Document...' : 'Download Official PDF Document'}
                   </button>
                 </div>
               </div>

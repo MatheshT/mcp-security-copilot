@@ -489,5 +489,14 @@ class DashboardService:
                 return True
         return False
 
+
+    def get_recommendations(self, alert_id: str):
+        """Get actionable containment recommendations for an alert or investigation"""
+        inv = self.get_investigation_by_id(alert_id)
+        severity = getattr(inv, "severity", "High") if inv else "High"
+        if hasattr(severity, "value"):
+            severity = severity.value
+        return self._generate_recommendations(str(severity))
+
 # Global instance
 dashboard_service = DashboardService()

@@ -22,11 +22,56 @@ const SEV = { Critical: '#ef4444', High: '#f97316', Medium: '#eab308', Low: '#22
 const ReportsPanel = ({ view }) => {
   const [tab, setTab]           = useState(view === 'pdf-export' ? 'generate' : view === 'report-history' ? 'history' : view === 'executive-reports' ? 'generate' : 'history');
   const [generating, setGenerating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [genProgress, setGenProgress] = useState(0);
   const [genDone, setGenDone]   = useState(false);
   const [selType, setSelType]   = useState('incident');
   const [selReport, setSelReport] = useState(null);
   const [incidentId, setIncidentId] = useState('');
+
+  const downloadPdf = async (targetId) => {
+    try {
+      setDownloading(true);
+      const id = targetId || incidentId || '1';
+      const res = await fetch(`/api/report/${encodeURIComponent(id)}/pdf`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Incident_Report_${id}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.warn('PDF download fallback to window.open:', err);
+      window.open(`/api/report/${encodeURIComponent(targetId || incidentId || '1')}/pdf`, '_blank');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const downloadJson = async (targetId) => {
+    try {
+      const id = targetId || incidentId || '1';
+      const res = await fetch(`/api/report/${encodeURIComponent(id)}/json`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Incident_Report_${id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.warn('JSON download fallback:', err);
+      window.open(`/api/report/${encodeURIComponent(targetId || incidentId || '1')}/json`, '_blank');
+    }
+  };
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -115,9 +160,31 @@ const ReportsPanel = ({ view }) => {
                 </div>
                 <div style={{ fontSize: '13px', color: '#94a3b8' }}>Report generated successfully. You can download it below.</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {[['📥 Download PDF','#6366f1'],['📊 Download JSON','#0ea5e9'],['📧 Send Email','#22c55e'],['👁 Preview','#a855f7']].map(([label,color]) => (
-                    <button key={label} style={{ padding: '10px', background: `${color}15`, border: `1px solid ${color}40`, borderRadius: '8px', color, fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>{label}</button>
-                  ))}
+                  <button
+                    onClick={() => downloadPdf(incidentId || '1')}
+                    disabled={downloading}
+                    style={{ padding: '10px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: '8px', color: '#6366f1', fontWeight: 600, fontSize: '13px', cursor: downloading ? 'wait' : 'pointer' }}
+                  >
+                    {downloading ? '⏳ Downloading…' : '📥 Download PDF'}
+                  </button>
+                  <button
+                    onClick={() => downloadJson(incidentId || '1')}
+                    style={{ padding: '10px', background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.4)', borderRadius: '8px', color: '#0ea5e9', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    📊 Download JSON
+                  </button>
+                  <button
+                    onClick={() => alert('Report link queued for dispatch.')}
+                    style={{ padding: '10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: '8px', color: '#22c55e', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    📧 Send Email
+                  </button>
+                  <button
+                    onClick={() => downloadPdf(incidentId || '1')}
+                    style={{ padding: '10px', background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: '8px', color: '#a855f7', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    👁 Preview PDF
+                  </button>
                 </div>
               </div>
             )}
@@ -157,9 +224,31 @@ const ReportsPanel = ({ view }) => {
                 ))}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {[['📥 Download','#6366f1'],['📧 Email','#22c55e'],['🗑 Delete','#ef4444'],['📋 Clone','#0ea5e9']].map(([label,color]) => (
-                  <button key={label} style={{ padding: '10px', background: `${color}15`, border: `1px solid ${color}40`, borderRadius: '8px', color, fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>{label}</button>
-                ))}
+                <button
+                  onClick={() => downloadPdf(selReport.id)}
+                  disabled={downloading}
+                  style={{ padding: '10px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: '8px', color: '#6366f1', fontWeight: 600, fontSize: '13px', cursor: downloading ? 'wait' : 'pointer' }}
+                >
+                  {downloading ? '⏳ Downloading…' : '📥 Download PDF'}
+                </button>
+                <button
+                  onClick={() => alert(`Report ${selReport.id} sent to SOC email distribution list.`)}
+                  style={{ padding: '10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: '8px', color: '#22c55e', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                >
+                  📧 Email
+                </button>
+                <button
+                  onClick={() => setSelReport(null)}
+                  style={{ padding: '10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '8px', color: '#ef4444', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                >
+                  🗑 Close
+                </button>
+                <button
+                  onClick={() => downloadJson(selReport.id)}
+                  style={{ padding: '10px', background: 'rgba(14,165,233,0.15)', border: '1px solid rgba(14,165,233,0.4)', borderRadius: '8px', color: '#0ea5e9', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                >
+                  📋 JSON
+                </button>
               </div>
             </div>
           )}

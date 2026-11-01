@@ -98,7 +98,7 @@ async def generate_pdf_report(
                 host=investigation.host,
                 timestamp=investigation.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 status=investigation.status,
-                ioc=investigation.ioc,
+                ioc=investigation.ioc if isinstance(investigation.ioc, list) else ([str(investigation.ioc)] if investigation.ioc else ["HostActivity"]),
                 summary=investigation.summary or "Investigation in progress",
                 analyst=investigation.analyst or "System",
                 source_ip=investigation.source_ip,
@@ -131,7 +131,7 @@ async def generate_pdf_report(
                     host=host,
                     timestamp=real_alert.get("timestamp", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")),
                     status=InvestigationStatus.RESOLVED if sev_enum == SeverityLevel.LOW else InvestigationStatus.IN_PROGRESS,
-                    ioc=real_alert.get("location", "EventChannel"),
+                    ioc=[str(real_alert.get("location", "EventChannel"))],
                     summary=f"Wazuh SIEM real detection: {desc}. Agent: {host}.",
                     analyst="SentinelAI SOC Copilot",
                     source_ip=real_alert.get("event_data", {}).get("win", {}).get("system", {}).get("computer", host),
@@ -150,7 +150,11 @@ async def generate_pdf_report(
         report_data.mitre_mapping = generate_mitre_mapping(report_data.attack_type)
         
         # Add recommendations
-        report_data.recommendations = await dashboard_service.get_recommendations(alert_id)
+        rec_res = dashboard_service.get_recommendations(alert_id)
+        if hasattr(rec_res, '__await__'):
+            report_data.recommendations = await rec_res
+        else:
+            report_data.recommendations = rec_res
         
         # Generate PDF
         pdf_content = pdf_service.generate_report(alert_id, report_data.dict(), format)
@@ -179,7 +183,7 @@ async def get_report_json(alert_id: str):
                 host=investigation.host,
                 timestamp=investigation.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC"),
                 status=investigation.status,
-                ioc=investigation.ioc,
+                ioc=investigation.ioc if isinstance(investigation.ioc, list) else ([str(investigation.ioc)] if investigation.ioc else ["HostActivity"]),
                 summary=investigation.summary,
                 analyst=investigation.analyst,
                 source_ip=investigation.source_ip,
@@ -211,7 +215,7 @@ async def get_report_json(alert_id: str):
                     host=host,
                     timestamp=real_alert.get("timestamp", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")),
                     status=InvestigationStatus.RESOLVED if sev_enum == SeverityLevel.LOW else InvestigationStatus.IN_PROGRESS,
-                    ioc=real_alert.get("location", "EventChannel"),
+                    ioc=[str(real_alert.get("location", "EventChannel"))],
                     summary=f"Wazuh SIEM real detection: {desc}. Agent: {host}.",
                     analyst="SentinelAI SOC Copilot",
                     source_ip=real_alert.get("event_data", {}).get("win", {}).get("system", {}).get("computer", host),
@@ -227,11 +231,11 @@ async def get_report_json(alert_id: str):
 
 async def generate_ai_analysis(data: ReportData) -> str:
     """Generate AI analysis for the report"""
-    # This would integrate with your LLM client
+    sev_str = data.severity.value if hasattr(data.severity, "value") else str(data.severity)
     analysis_templates = [
-        f"The investigation has identified a {data.severity.value.lower()} severity {data.attack_type} attack targeting {data.host}. Initial analysis suggests the attack vector involves multiple stages including reconnaissance, initial access, and lateral movement. The attacker appears to be using advanced evasion techniques to avoid detection.",
+        f"The investigation has identified a {sev_str.lower()} severity {data.attack_type} attack targeting {data.host}. Initial analysis suggests the attack vector involves multiple stages including reconnaissance, initial access, and lateral movement. The attacker appears to be using advanced evasion techniques to avoid detection.",
         f"Analysis of the {data.attack_type} incident on {data.host} reveals a sophisticated attack pattern. The threat actor has demonstrated advanced capabilities in maintaining persistence and evading detection. Recommended immediate containment actions are critical to prevent further compromise.",
-        f"This {data.severity.value.lower()} severity alert indicates a {data.attack_type} attack against {data.host}. The attack chain suggests a coordinated effort with potential ties to advanced persistent threat groups. Immediate investigation and response are required."
+        f"This {sev_str.lower()} severity alert indicates a {data.attack_type} attack against {data.host}. The attack chain suggests a coordinated effort with potential ties to advanced persistent threat groups. Immediate investigation and response are required."
     ]
     return random.choice(analysis_templates)
 
