@@ -681,6 +681,15 @@ class LLMIntentParser:
             if entity.type in high_risk_entities:
                 return 'High'
         
+        # Check for external public DNS resolvers (Enterprise Corporate DNS Bypass / Medium Risk)
+        public_dns_ips = ['8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1', '9.9.9.9', '208.67.222.222']
+        for entity in entities:
+            if entity.value in public_dns_ips:
+                return 'Medium'
+        for dns_ip in public_dns_ips:
+            if dns_ip in query:
+                return 'Medium'
+        
         # Default based on intent
         if intent in [IntentType.INCIDENT_INVESTIGATION, IntentType.MALWARE_ANALYSIS]:
             return 'High'
